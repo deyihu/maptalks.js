@@ -1,5 +1,5 @@
 import { INTERNAL_LAYER_PREFIX } from '../../core/Constants';
-import { isNil, isNumber, sign, removeFromArray, UID, extend } from '../../core/util';
+import { isNil, isNumber, sign, removeFromArray, UID } from '../../core/util';
 import { lowerSymbolOpacity } from '../../core/util/style';
 import Class from '../../core/Class';
 import Eventable from '../../core/Eventable';
@@ -383,7 +383,7 @@ class GeometryEditor extends Eventable(Class) {
      * @param {fn} onHandleMove callback
      * @private
      */
-    _createResizeHandles(blackList, onHandleMove, onHandleUp, options = {}) {
+    _createResizeHandles(blackList, onHandleMove, onHandleUp) {
         //cursor styles.
         const cursors = [
             'nw-resize', 'n-resize', 'ne-resize',
@@ -398,37 +398,24 @@ class GeometryEditor extends Eventable(Class) {
         ];
         const geometry = this._geometry;
         //marker做特殊处理，利用像素求锚点
-        const { isMarker } = options;
+        const isMarker = geometry instanceof Marker;
         const map = this.getMap();
         const me = this;
 
         function getResizeAnchors(ext) {
             if (isMarker) {
-                const { dxdy, defaultDxDy } = me._getMarkerDefaultDxDy();
-                const fixedExtent = geometry._getPainter().getFixedExtent();
-                const centerPoint = map.coordinateToPoint(geometry.getCenter());
-                const width = fixedExtent.getWidth(), height = fixedExtent.getHeight();
-                const offsetX = dxdy.x + defaultDxDy.x, offsetY = dxdy.y + defaultDxDy.y;
-                // 锚点坐标的偏移量
-                const dxdys = [
-                    [-width / 2 + offsetX, -height / 2 + offsetY],
-                    [offsetX, -height / 2 + offsetY],
-                    [width / 2 + offsetX, -height / 2 + offsetY],
-                    [-width / 2 + offsetX, offsetY],
-                    [width / 2 + offsetX, offsetY],
-                    [-width / 2 + offsetX, height / 2 + offsetY],
-                    [offsetX, height / 2 + offsetY],
-                    [width / 2 + offsetX, height / 2 + offsetY],
+                ext = geometry._getPainter().getContainerExtent();
+                return [
+                // ext.getMin(),
+                    new Point(ext['xmin'], ext['ymin']),
+                    new Point((ext['xmax'] + ext['xmin']) / 2, ext['ymin']),
+                    new Point(ext['xmax'], ext['ymin']),
+                    new Point(ext['xmin'], (ext['ymin'] + ext['ymax']) / 2),
+                    new Point(ext['xmax'], (ext['ymin'] + ext['ymax']) / 2),
+                    new Point(ext['xmin'], ext['ymax']),
+                    new Point((ext['xmax'] + ext['xmin']) / 2, ext['ymax']),
+                    new Point(ext['xmax'], ext['ymax']),
                 ];
-                return dxdys.map(xy => {
-                    return {
-                        point: centerPoint.copy(),
-                        symbol: {
-                            markerDx: xy[0],
-                            markerDy: xy[1]
-                        }
-                    };
-                });
             }
             return [
                 // ext.getMin(),
@@ -460,11 +447,10 @@ class GeometryEditor extends Eventable(Class) {
                     }
                 }
                 const anchor = anchors[i],
-                    coordinate = map.pointToCoordinate(anchor.point || anchor);
-                const symbol = extend({}, handleSymbol, anchor.symbol);
+                    coordinate = isMarker ? map.containerPointToCoord(anchor) : map.pointToCoordinate(anchor);
                 if (resizeHandles.length < (anchors.length - blackList.length)) {
                     const handle = this.createHandle(coordinate, {
-                        'symbol': symbol,
+                        'symbol': handleSymbol,
                         'cursor': cursors[i],
                         'axis': axis[i],
                         'dragOnScreenAxis': isMarker,
@@ -487,10 +473,6 @@ class GeometryEditor extends Eventable(Class) {
                     resizeHandles.push(handle);
                 } else {
                     resizeHandles[anchorIndexes[i]].setCoordinates(coordinate);
-                    //更新锚点的symbol，即偏移量
-                    if (isMarker) {
-                        resizeHandles[anchorIndexes[i]].setSymbol(symbol);
-                    }
                 }
             }
 
@@ -502,27 +484,9 @@ class GeometryEditor extends Eventable(Class) {
         return resizeHandles;
     }
 
-    // 获取marker的默认偏移量和手动设置的偏移量
-    _getMarkerDefaultDxDy() {
-        const shadow = this._shadow;
-        const symbol = shadow._getInternalSymbol();
-        const dxdy = new Point(0, 0);
-        if (isNumber(symbol['markerDx'])) {
-            dxdy.x = symbol['markerDx'];
-        }
-        if (isNumber(symbol['markerDy'])) {
-            dxdy.y = symbol['markerDy'];
-        }
-        let markerHeight = 0, markerWidth = 0;
-        if (isNumber(symbol['markerHeight'])) {
-            markerHeight = symbol['markerHeight'];
-        }
-        if (isNumber(symbol['markerWidth'])) {
-            markerWidth = symbol['markerWidth'];
-        }
-        //所有的marker统一处理掉了，包括vector marker ,image marker
-        const defaultDxDy = Symbolizers.VectorMarkerSymbolizer.getAlignPoint(symbol['markerType'], markerWidth, markerHeight, symbol);
-        return { dxdy, defaultDxDy };
+    _getMarkerDxDy() {
+        const symbol = this._geometry._getInternalSymbol();
+        return new Point(+symbol['markerDx'] || 0, +symbol['markerDy'] || 0);
     }
 
     /**
@@ -608,7 +572,7 @@ class GeometryEditor extends Eventable(Class) {
             //     wh.y = 0;
             // }
             const { containerPoint } = e;
-            const { dxdy } = this._getMarkerDefaultDxDy();
+            const dxdy = this._getMarkerDxDy();
             // 利用像素差计算宽和高
             const pixel = map.coordToContainerPoint(shadow.getCoordinates());
             const offset = [containerPoint.x - pixel.x - dxdy.x, containerPoint.y - pixel.y - dxdy.y];
@@ -646,9 +610,7 @@ class GeometryEditor extends Eventable(Class) {
             }
         }, () => {
             this._update(getUpdates());
-        }, extend({
-            isMarker: true,
-        }, this._getMarkerDefaultDxDy()));
+        });
 
         function getUpdates() {
             const updates = [
