@@ -121,7 +121,8 @@ const options = {
 
     'renderer': 'canvas',
 
-    'cascadePitches': [10, 60]
+    'cascadePitches': [10, 60],
+    'renderable': true
 };
 
 /**
@@ -243,7 +244,6 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
         return this;
     }
 
-
     /**
      * Whether the map is loaded or not.
      * @return {Boolean}
@@ -312,6 +312,9 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
     }
 
     _updateSpatialReference(ref, oldRef) {
+        if (isString(ref)) {
+            ref = SpatialReference.getPreset(ref);
+        }
         ref = extend({}, ref);
         this._center = this.getCenter();
         this.options['spatialReference'] = ref;
@@ -1570,6 +1573,23 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
         return !!this._dragRotating;
     }
 
+    /**
+     * Test if given box is out of current screen
+     * @param {Number[] | PointExtent} box - [minx, miny, maxx, maxy]
+     * @param {Number} padding - test padding
+     * @returns {Boolean}
+     */
+    isOffscreen(box, viewportPadding = 0) {
+        const { width, height } = this;
+        const screenRightBoundary = width + viewportPadding;
+        const screenBottomBoundary = height + viewportPadding;
+        let { xmin, ymin, xmax, ymax } = box;
+        if (Array.isArray(box)) {
+            [xmin, ymin, xmax, ymax] = box;
+        }
+        return xmax < viewportPadding || xmin >= screenRightBoundary || ymax < viewportPadding || ymin > screenBottomBoundary;
+    }
+
     getRenderer() {
         return this._getRenderer();
     }
@@ -1662,6 +1682,9 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
         }
         for (let i = 0, l = this._layers.length; i < l; i++) {
             this._layers[i]._order = i;
+            if (this._layers[i].sortLayersByZIndex) {
+                this._layers[i].sortLayersByZIndex();
+            }
         }
         this._layers.sort(function (a, b) {
             const c = a.getZIndex() - b.getZIndex();
@@ -1958,7 +1981,12 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
      */
     _prjToPoint(pCoord, zoom, out) {
         zoom = (isNil(zoom) ? this.getZoom() : zoom);
-        return this._spatialReference.getTransformation().transform(pCoord, this._getResolution(zoom), out);
+        const res = this._getResolution(zoom);
+        return this._prjToPointAtRes(pCoord, res, out);
+    }
+
+    _prjToPointAtRes(pCoord, res, out) {
+        return this._spatialReference.getTransformation().transform(pCoord, res, out);
     }
 
     /**

@@ -136,10 +136,24 @@ describe('Geometry.Marker', function () {
                 } else {
                     expect(layer).to.be.painted(0, -1);
                 }
-                expect(marker.getSize().toArray()).to.be.eql([11, 21]);
+                expect(marker.getSize().toArray()).to.be.eql([12, 22]);
                 map.removeLayer(layer);
             }
         });
+
+        it('can be vector with undefined size', function (done) {
+                var marker = new maptalks.Marker(center, {
+                    symbol: {
+                        markerType: 'ellipse'
+                    }
+                });
+                layer.once('layerload', function () {
+                    expect(layer).to.be.painted(0, 0);
+                    done();
+                });
+                layer.addGeometry(marker);
+                expect(marker.getSize().toArray()).to.be.eql([12, 12]);
+            });
 
         context('image marker with alignment', function () {
             it('bottom-right', function (done) {
@@ -249,7 +263,7 @@ describe('Geometry.Marker', function () {
                     done();
                 });
                 layer.addGeometry(marker);
-                expect(marker.getSize().toArray()).to.be.eql([11, 21]);
+                expect(marker.getSize().toArray()).to.be.eql([12, 22]);
             });
 
             it('pin', function (done) {
@@ -268,7 +282,7 @@ describe('Geometry.Marker', function () {
                     done();
                 });
                 layer.addGeometry(marker);
-                expect(marker.getSize().toArray()).to.be.eql([11, 21]);
+                expect(marker.getSize().toArray()).to.be.eql([12, 22]);
             });
 
             it('rectangle', function (done) {
@@ -282,12 +296,12 @@ describe('Geometry.Marker', function () {
                     }
                 });
                 layer.once('layerload', function () {
-                    expect(layer).to.be.painted(-5, -11);
-                    expect(layer).to.be.painted(5, 9);
+                    expect(layer).to.be.painted(-5, -10);
+                    expect(layer).not.to.be.painted(5, 9);
                     done();
                 });
                 layer.addGeometry(marker);
-                expect(marker.getSize().toArray()).to.be.eql([11, 21]);
+                expect(marker.getSize().toArray()).to.be.eql([12, 22]);
             });
         });
 

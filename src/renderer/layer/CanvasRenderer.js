@@ -293,6 +293,13 @@ class CanvasRenderer extends Class {
         if (point.x < 0 || point.x > size['width'] * r || point.y < 0 || point.y > size['height'] * r) {
             return false;
         }
+        const imageData = this.getImageData && this.getImageData();
+        if (imageData) {
+            const x = r * point.x, y = r * point.y;
+            const idx = y * imageData.width * 4 + x * 4;
+            //索引下标从0开始需要-1
+            return imageData.data[idx + 3] > 0;
+        }
         try {
             const imgData = this.context.getImageData(r * point.x, r * point.y, 1, 1).data;
             if (imgData[3] > 0) {
@@ -802,8 +809,17 @@ export class ResourceCache {
         this.resources[url[0]] = {
             image: img,
             width: +url[1],
-            height: +url[2]
+            height: +url[2],
+            refCnt: 0
         };
+        if (img && Browser.imageBitMap) {
+            if (img.src && isSVG(img.src)) {
+                return;
+            }
+            createImageBitmap(img).then(imageBitmap => {
+                this.resources[url[0]].image = imageBitmap;
+            });
+        }
     }
 
     isResourceLoaded(url, checkSVG) {
@@ -822,6 +838,20 @@ export class ResourceCache {
             return false;
         }
         return true;
+    }
+
+    login(url) {
+        const res = this.resources[url];
+        if (res) {
+            res.refCnt++;
+        }
+    }
+
+    logout(url) {
+        const res = this.resources[url];
+        if (res && res.refCnt-- <= 0) {
+            delete this.resources[url];
+        }
     }
 
     getImage(url) {

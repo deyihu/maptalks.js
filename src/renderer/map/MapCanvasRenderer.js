@@ -1,4 +1,4 @@
-import { IS_NODE, isNumber, isFunction, requestAnimFrame, cancelAnimFrame, equalMapView } from '../../core/util';
+import { IS_NODE, isNumber, isFunction, requestAnimFrame, cancelAnimFrame, equalMapView, now } from '../../core/util';
 import { createEl, preventSelection, computeDomPosition, addDomEvent, removeDomEvent } from '../../core/util/dom';
 import Browser from '../../core/Browser';
 import Point from '../../geo/Point';
@@ -44,10 +44,13 @@ class MapCanvasRenderer extends MapRenderer {
         const map = this.map;
         map._fireEvent('framestart');
         this.updateMapDOM();
+        map.clearCollisionIndex();
         const layers = this._getAllLayerToRender();
         this.drawLayers(layers, framestamp);
         const updated = this.drawLayerCanvas(layers);
         if (updated) {
+            // when updated is false, should escape drawing tops and centerCross to keep handle's alpha
+            this.drawTops();
             this._drawCenterCross();
         }
         // this._drawContainerExtent();
@@ -594,7 +597,9 @@ class MapCanvasRenderer extends MapRenderer {
             this._cancelFrameLoop();
             return;
         }
-        this.renderFrame(framestamp);
+        if (this.map.options['renderable']) {
+            this.renderFrame(framestamp);
+        }
         // Keep registering ourselves for the next animation frame
         this._animationFrame = requestAnimFrame((framestamp) => { this._frameLoop(framestamp); });
     }
@@ -766,6 +771,8 @@ class MapCanvasRenderer extends MapRenderer {
 
         canvas.height = r * mapSize['height'];
         canvas.width = r * mapSize['width'];
+        this.topLayer.width = canvas.width;
+        this.topLayer.height = canvas.height;
         if (canvas.style) {
             canvas.style.width = mapSize['width'] + 'px';
             canvas.style.height = mapSize['height'] + 'px';
@@ -775,6 +782,8 @@ class MapCanvasRenderer extends MapRenderer {
     }
 
     createCanvas() {
+        this.topLayer = createEl('canvas');
+        this.topCtx = this.topLayer.getContext('2d');
         if (this._containerIsCanvas) {
             this.canvas = this.map._containerDOM;
         } else {
@@ -807,7 +816,7 @@ class MapCanvasRenderer extends MapRenderer {
     _setCheckSizeInterval(interval) {
         // ResizeObserver priority of use
         // https://developer.mozilla.org/zh-CN/docs/Web/API/ResizeObserver
-        if (typeof window !== 'undefined' && window.ResizeObserver) {
+        if (Browser.resizeObserver) {
             if (this._resizeObserver) {
                 this._resizeObserver.disconnect();
             }
@@ -818,6 +827,9 @@ class MapCanvasRenderer extends MapRenderer {
                         this._resizeObserver.disconnect();
                     } else if (entries.length) {
                         this._checkSize(entries[0].contentRect);
+
+                        //force render all layers,这两句代码不能颠倒，因为要先重置所有图层的size，才能正确的渲染所有图层
+                        this.renderFrame(now());
                     }
                 });
                 this._resizeObserver.observe(this.map._containerDOM);
@@ -893,6 +905,47 @@ class MapCanvasRenderer extends MapRenderer {
             return;
         }
         this.setToRedraw();
+    }
+
+    //----------- top elements methods -------------
+    // edit handles or edit outlines
+    addTopElement(e) {
+        if (!this._tops) {
+            this._tops = [];
+        }
+        this._tops.push(e);
+    }
+
+    removeTopElement(e) {
+        if (!this._tops) {
+            return;
+        }
+        const idx = this._tops.indexOf(e);
+        if (idx >= 0) {
+            this._tops.splice(idx, 1);
+        }
+    }
+
+    getTopElements() {
+        return this._tops || [];
+    }
+
+    drawTops() {
+        // clear topLayer
+        this.topCtx.clearRect(0, 0, this.topLayer.width, this.topLayer.height);
+        this.map.fire('drawtopstart');
+        this.map.fire('drawtops');
+        const tops = this.getTopElements();
+        let updated = false;
+        for (let i = 0; i < tops.length; i++) {
+            if (tops[i].render(this.topCtx)) {
+                updated = true;
+            }
+        }
+        if (updated) {
+            this.context.drawImage(this.topLayer, 0, 0);
+        }
+        this.map.fire('drawtopsend');
     }
 }
 

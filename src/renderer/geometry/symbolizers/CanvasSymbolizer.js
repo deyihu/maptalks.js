@@ -1,8 +1,9 @@
-import { isNumber, extend } from '../../../core/util';
-import { loadFunctionTypes, isFunctionDefinition, interpolated } from '../../../core/mapbox';
+import { isNumber } from '../../../core/util';
+import { loadGeoSymbol, isFunctionDefinition, interpolated } from '../../../core/mapbox';
 import Symbolizer from './Symbolizer';
 import Canvas from '../../../core/Canvas';
 
+let tempSymbolHash = null, tempLayer = null, tempCtx = null;
 /**
  * @classdesc
  * Base symbolizer class for all the symbolizers base on HTML5 Canvas2D
@@ -35,45 +36,33 @@ class CanvasSymbolizer extends Symbolizer {
     }
 
     prepareCanvas(ctx, style, resources) {
-        Canvas.prepareCanvas(ctx, style, resources, this.getPainter().isHitTesting());
+        const { geometry } = this;
+        const isHitTesting = this.getPainter().isHitTesting();
+        // 确保symbolizers只有一个，如果是混合的（strokeAndFill and Text等）会导致绘制错乱,，
+        // 比如 PolygonFill和TextFill不同，就会导致问题出现，文字的绘制颜色会使用PolygonFill
+        // 只有一个比如 StrokeAndFillSymbolizer ，TextMarkerSymbolizer，VectorMarkerSymbolizer
+        if (geometry._symbolHash && geometry._painter && geometry._painter.symbolizers.length === 1) {
+            if (tempCtx === ctx && geometry._symbolHash === tempSymbolHash && geometry._layer === tempLayer) {
+                return;
+            }
+        }
+        tempLayer = geometry._layer;
+        tempSymbolHash = geometry._symbolHash;
+        tempCtx = ctx;
+        Canvas.prepareCanvas(ctx, style, resources, isHitTesting);
     }
 
-    remove() {}
+    remove() { }
 
-    setZIndex() {}
+    setZIndex() { }
 
-    show() {}
+    show() { }
 
-    hide() {}
+    hide() { }
 
     _defineStyle(style) {
-        return function () {
-            const arr = [],
-                prop = {};
-            return loadFunctionTypes(style, () => {
-                const map = this.getMap();
-                return set(arr, map.getZoom(),
-                    extend({},
-                        this.geometry.getProperties(),
-                        setProp(prop, map.getBearing(), map.getPitch(), map.getZoom())
-                    )
-                );
-            });
-        }.bind(this)();
+        return loadGeoSymbol(style, this.geometry);
     }
-}
-
-function set(arr, a0, a1) {
-    arr[0] = a0;
-    arr[1] = a1;
-    return arr;
-}
-
-function setProp(prop, b, p, z) {
-    prop['{bearing}'] = b;
-    prop['{pitch}'] = p;
-    prop['{zoom}'] = z;
-    return prop;
 }
 
 export default CanvasSymbolizer;

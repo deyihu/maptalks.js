@@ -1,4 +1,4 @@
-import { isNumber, sign, pushIn, hasOwn } from '../../core/util';
+import { isNumber, sign, pushIn } from '../../core/util';
 import { clipPolygon, clipLine } from '../../core/util/path';
 import Class from '../../core/Class';
 import Size from '../../geo/Size';
@@ -24,7 +24,6 @@ let testCanvas;
 
 const TEMP_POINT0 = new Point(0, 0);
 const TEMP_PAINT_EXTENT = new PointExtent();
-const TEMP_EXTENT = new PointExtent();
 const TEMP_FIXED_EXTENT = new PointExtent();
 const TEMP_CLIP_EXTENT0 = new PointExtent();
 const TEMP_CLIP_EXTENT1 = new PointExtent();
@@ -79,6 +78,7 @@ class Painter extends Class {
             for (let i = regSymbolizers.length - 1; i >= 0; i--) {
                 if (regSymbolizers[i].test(symbol, this.geometry)) {
                     const symbolizer = new regSymbolizers[i](symbol, this.geometry, this);
+                    symbolizer._index = ii;
                     symbolizers.push(symbolizer);
                     if (symbolizer instanceof Symbolizers.PointSymbolizer) {
                         this._hasPoint = true;
@@ -496,7 +496,8 @@ class Painter extends Class {
         if (!this.symbolizers) {
             return;
         }
-        const renderer = this.getLayer()._getRenderer();
+        const layer = this.getLayer();
+        const renderer = layer._getRenderer();
         if (!renderer || !renderer.context && !context) {
             return;
         }
@@ -519,12 +520,18 @@ class Painter extends Class {
         const ctx = context || renderer.context;
         const contexts = [ctx, renderer.resources];
         for (let i = this.symbolizers.length - 1; i >= 0; i--) {
-            this._prepareShadow(ctx, this.symbolizers[i].symbol);
+            // reduce function call
+            if (ctx.shadowBlur || this.symbolizers[i].symbol['shadowBlur']) {
+                this._prepareShadow(ctx, this.symbolizers[i].symbol);
+            }
             this.symbolizers[i].symbolize.apply(this.symbolizers[i], contexts);
         }
         this._afterPaint();
         this._painted = true;
-        this._debugSymbolizer.symbolize.apply(this._debugSymbolizer, contexts);
+        // reduce function call
+        if (this.geometry.options['debug'] || layer.options['debug']) {
+            this._debugSymbolizer.symbolize.apply(this._debugSymbolizer, contexts);
+        }
     }
 
     getSprite(resources, canvasClass) {
@@ -577,6 +584,7 @@ class Painter extends Class {
         if (!tolerance || tolerance < 0.5) {
             tolerance = 0.5;
         }
+        this._hitPoint = cp.sub(tolerance, tolerance);
         if (!testCanvas) {
             const canvasClass = this.getMap() ? this.getMap().CanvasClass : null;
             testCanvas = Canvas.createCanvas(1, 1, canvasClass);
@@ -584,7 +592,6 @@ class Painter extends Class {
         Canvas.setHitTesting(true);
         testCanvas.width = testCanvas.height = 2 * tolerance;
         const ctx = testCanvas.getContext('2d');
-        this._hitPoint = cp.sub(tolerance, tolerance);
         try {
             this.paint(null, ctx, this._hitPoint);
         } catch (e) {
@@ -702,39 +709,6 @@ class Painter extends Class {
         return false;
     }
 
-    getContainerExtent(out) {
-        if (this._aboveCamera()) {
-            return null;
-        }
-        this._verifyProjection();
-        const map = this.getMap();
-        const zoom = map.getZoom();
-        const glScale = map._glScale;
-        if (!this._extent2D || this._extent2D._zoom !== zoom) {
-            this.get2DExtent(null, TEMP_EXTENT);
-        }
-        const altitude = this.getMinAltitude();
-        const extent = this._extent2D.convertTo(c => map._pointToContainerPoint(c, zoom, altitude / glScale, TEMP_POINT0), out);
-        const maxAltitude = this.getMaxAltitude();
-        if (maxAltitude !== altitude) {
-            const extent2 = this._extent2D.convertTo(c => map._pointToContainerPoint(c, zoom, maxAltitude / glScale, TEMP_POINT0), TEMP_EXTENT);
-            extent._combine(extent2);
-        }
-        const layer = this.geometry.getLayer();
-        if (this.geometry.type === 'LineString' && maxAltitude && layer.options['drawAltitude']) {
-            const groundExtent = this._extent2D.convertTo(c => map._pointToContainerPoint(c, zoom, 0, TEMP_POINT0), TEMP_EXTENT);
-            extent._combine(groundExtent);
-        }
-        if (extent) {
-            extent._add(this._fixedExtent || this._computeFixedExtent(null, new PointExtent()));
-        }
-        const smoothness = this.geometry.options['smoothness'];
-        if (smoothness) {
-            extent._expand(extent.getWidth() * 0.15);
-        }
-        return extent;
-    }
-
     _aboveCamera() {
         const altitude = this.getMinAltitude();
         const map = this.getMap();
@@ -827,9 +801,6 @@ class Painter extends Class {
         delete this._fixedExtent;
         delete this._cachedParams;
         delete this._unsimpledParams;
-        if (this.geometry) {
-            delete this.geometry[Symbolizers.TextMarkerSymbolizer.CACHE_KEY];
-        }
     }
 
     getAltitude() {
@@ -906,29 +877,9 @@ class Painter extends Class {
     }
 
     _beforePaint() {
-        const textcache = this.geometry[Symbolizers.TextMarkerSymbolizer.CACHE_KEY];
-        if (!textcache) {
-            return;
-        }
-        for (const p in textcache) {
-            if (hasOwn(textcache, p)) {
-                textcache[p].active = false;
-            }
-        }
     }
 
     _afterPaint() {
-        const textcache = this.geometry[Symbolizers.TextMarkerSymbolizer.CACHE_KEY];
-        if (!textcache) {
-            return;
-        }
-        for (const p in textcache) {
-            if (hasOwn(textcache, p)) {
-                if (!textcache[p].active) {
-                    delete textcache[p];
-                }
-            }
-        }
     }
 }
 

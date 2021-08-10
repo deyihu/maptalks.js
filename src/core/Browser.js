@@ -1,3 +1,4 @@
+import { isFunction } from './util';
 import { IS_NODE } from './util/env';
 
 let Browser = {};
@@ -22,7 +23,13 @@ if (!IS_NODE) {
         webkit3d = ('WebKitCSSMatrix' in window) && ('m11' in new window.WebKitCSSMatrix()) && !android23,
         gecko3d = 'MozPerspective' in doc.style,
         opera12 = 'OTransition' in doc.style,
-        any3d = (ie3d || webkit3d || gecko3d) && !opera12 && !phantomjs;
+        any3d = (ie3d || webkit3d || gecko3d) && !opera12 && !phantomjs,
+        // https://developer.mozilla.org/zh-CN/docs/Web/API/ImageBitmap
+        // this will Improve performance 2-3FPS
+        imageBitMap = typeof window !== 'undefined' && isFunction(window.createImageBitmap),
+        resizeObserver = typeof window !== 'undefined' && isFunction(window.ResizeObserver),
+        btoa = typeof window !== 'undefined' && isFunction(window.btoa);
+
 
     let chromeVersion = 0;
     if (chrome) {
@@ -32,15 +39,16 @@ if (!IS_NODE) {
     const touch = !phantomjs && (pointer || 'ontouchstart' in window ||
         (window.DocumentTouch && document instanceof window.DocumentTouch));
 
-    let webgl;
-    try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl') ||
-            canvas.getContext('experimental-webgl');
-        webgl = gl && gl instanceof WebGLRenderingContext;
-    } catch (err) {
-        webgl = false;
-    }
+    // let webgl;
+    // try {
+    //     const canvas = document.createElement('canvas');
+    //     const gl = canvas.getContext('webgl') ||
+    //         canvas.getContext('experimental-webgl');
+    //     webgl = gl && gl instanceof WebGLRenderingContext;
+    // } catch (err) {
+    //     webgl = false;
+    // }
+    const webgl = typeof window !== 'undefined' && ('WebGLRenderingContext' in window);
 
     const devicePixelRatio = (window.devicePixelRatio || (window.screen.deviceXDPI / window.screen.logicalXDPI));
 
@@ -53,7 +61,7 @@ if (!IS_NODE) {
         android: ua.indexOf('android') !== -1,
         android23: android23,
         chrome: chrome,
-        chromeVersion : chromeVersion,
+        chromeVersion: chromeVersion,
         safari: !chrome && ua.indexOf('safari') !== -1,
         phantomjs: phantomjs,
 
@@ -80,7 +88,10 @@ if (!IS_NODE) {
         ie9: (ie && document.documentMode === 9),
         ie10: (ie && document.documentMode === 10),
 
-        webgl : webgl
+        webgl: webgl,
+        imageBitMap,
+        resizeObserver,
+        btoa
     };
 }
 

@@ -1,9 +1,10 @@
-import { isString } from '../core/util';
+import { isObject, isString } from '../core/util';
 import { createEl, addDomEvent, removeDomEvent } from '../core/util/dom';
 import Point from '../geo/Point';
+import Size from '../geo/Size';
 import { Geometry, Marker, MultiPoint, LineString, MultiLineString } from '../geometry';
 import UIComponent from './UIComponent';
-
+const PROPERTY_PATTERN = /\{ *([\w_]+) *\}/g;
 
 /**
  * @property {Object} options
@@ -15,6 +16,7 @@ import UIComponent from './UIComponent';
  * @property {Boolean} [options.custom=false]  - set it to true if you want a customized infowindow, customized html codes or a HTMLElement is set to content.
  * @property {String}  [options.title=null]    - title of the infowindow.
  * @property {String|HTMLElement}  options.content - content of the infowindow.
+ * @property {Boolean}  [options.enableTemplate=false]  - whether open template . such as content:`homepage:{url},company name:{name}`.
  * @memberOf ui.InfoWindow
  * @instance
  */
@@ -27,8 +29,11 @@ const options = {
     'minHeight': 120,
     'custom': false,
     'title': null,
-    'content': null
+    'content': null,
+    'enableTemplate': false
 };
+
+const EMPTY_SIZE = new Size(0, 0);
 
 /**
  * @classdesc
@@ -140,8 +145,10 @@ class InfoWindow extends UIComponent {
             if (isString(this.options['content'])) {
                 const dom = createEl('div');
                 dom.innerHTML = this.options['content'];
+                this._replaceTemplate(dom);
                 return dom;
             } else {
+                this._replaceTemplate(this.options['content']);
                 return this.options['content'];
             }
         }
@@ -157,6 +164,8 @@ class InfoWindow extends UIComponent {
         }
         content += '<a href="javascript:void(0);" class="maptalks-close"></a><div class="maptalks-msgContent"></div>';
         dom.innerHTML = content;
+        //reslove title
+        this._replaceTemplate(dom);
         const msgContent = dom.querySelector('.maptalks-msgContent');
         if (isString(this.options['content'])) {
             msgContent.innerHTML = this.options['content'];
@@ -166,8 +175,22 @@ class InfoWindow extends UIComponent {
         this._onCloseBtnClick = this.hide.bind(this);
         const closeBtn = dom.querySelector('.maptalks-close');
         addDomEvent(closeBtn, 'click touchend', this._onCloseBtnClick);
-
+        //reslove content
+        this._replaceTemplate(msgContent);
         return dom;
+    }
+
+    _replaceTemplate(dom) {
+        if (this.options['enableTemplate'] && this._owner && this._owner.getProperties && dom && dom.innerHTML) {
+            const properties = this._owner.getProperties() || {};
+            if (isObject(properties)) {
+                const html = dom.innerHTML;
+                dom.innerHTML = html.replace(PROPERTY_PATTERN, function (str, key) {
+                    return properties[key];
+                });
+            }
+        }
+        return this;
     }
 
     /**
@@ -201,6 +224,9 @@ class InfoWindow extends UIComponent {
                 }
                 painter = children[0]._getPainter();
                 markerSize = children[0].getSize();
+            }
+            if (!markerSize) {
+                markerSize = EMPTY_SIZE;
             }
             if (painter) {
                 const fixExtent = painter.getFixedExtent();

@@ -3,7 +3,7 @@ import VectorLayer from '../../../layer/VectorLayer';
 import OverlayLayerCanvasRenderer from './OverlayLayerCanvasRenderer';
 import PointExtent from '../../../geo/PointExtent';
 import * as vec3 from '../../../core/util/vec3';
-
+import { now } from '../../../core/util/common';
 const TEMP_EXTENT = new PointExtent();
 const TEMP_VEC3 = [];
 const TEMP_FIXEDEXTENT = new PointExtent();
@@ -19,6 +19,24 @@ const PLACEMENT_CENTER = 'center';
  * @param {VectorLayer} layer - layer to render
  */
 class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
+
+    getImageData() {
+        //如果不开启geometry event 或者 渲染频率很高 不要取缓存了，因为getImageData是个很昂贵的操作
+        if (!this.layer.options['geometryEvents'] || (!this._lastRenderTime) || (now() - this._lastRenderTime) < 32) {
+            return null;
+        }
+        if (!this._imageData) {
+            const { width, height } = this.context.canvas;
+            this._imageData = this.context.getImageData(0, 0, width, height);
+        }
+        return this._imageData;
+    }
+
+    clearImageData() {
+        //每次渲染完成清除缓存的imageData
+        delete this._imageData;
+        this._lastRenderTime = now();
+    }
 
     checkResources() {
         const resources = super.checkResources.apply(this, arguments);
@@ -95,7 +113,9 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
             this._geosToDraw.length < count || map.isMoving() || map.isInteracting()) {
             this.prepareToDraw();
             this._batchConversionMarkers(this.mapStateCache.glZoom);
-            this.forEachGeo(this.checkGeo, this);
+            if (!this._onlyHasPoint) {
+                this.forEachGeo(this.checkGeo, this);
+            }
             this._drawnRes = res;
         }
         this._sortByDistanceToCamera(map.cameraPosition);
@@ -109,9 +129,12 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
                 }
             }
             geo._paint(this._displayExtent);
-            delete this._geosToDraw[i]._cPoint;
-            delete this._geosToDraw[i]._inCurrentView;
+            // https://richardartoul.github.io/jekyll/update/2015/04/26/hidden-classes.html
+            // https://juejin.cn/post/6972702293636415519
+            this._geosToDraw[i]._cPoint = undefined;
+            this._geosToDraw[i]._inCurrentView = undefined;
         }
+        this.clearImageData();
     }
 
     /**
@@ -135,13 +158,16 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         this._updateDisplayExtent();
         this.prepareToDraw();
         this._batchConversionMarkers(this.mapStateCache.glZoom);
-        this.forEachGeo(this.checkGeo, this);
+        if (!this._onlyHasPoint) {
+            this.forEachGeo(this.checkGeo, this);
+        }
         this._sortByDistanceToCamera(this.getMap().cameraPosition);
         for (let i = 0, len = this._geosToDraw.length; i < len; i++) {
             this._geosToDraw[i]._paint();
-            delete this._geosToDraw[i]._cPoint;
-            delete this._geosToDraw[i]._inCurrentView;
+            this._geosToDraw[i]._cPoint = undefined;
+            this._geosToDraw[i]._inCurrentView = undefined;
         }
+        this.clearImageData();
     }
 
     prepareToDraw() {
@@ -150,6 +176,16 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     }
 
     checkGeo(geo) {
+        //点的话已经在批量处理里判断过了
+        if (geo.type === 'Point' && this._onlyHasPoint !== undefined) {
+            if (geo._inCurrentView) {
+                this._hasPoint = true;
+                geo._isCheck = true;
+                this._geosToDraw.push(geo);
+            }
+            return;
+        }
+        // LineString ,Polygon,Circle etc
         geo._isCheck = false;
         if (!geo || !geo.isVisible() || !geo.getMap() ||
             !geo.getLayer() || (!geo.getLayer().isCanvasRender())) {
@@ -246,22 +282,31 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     // 优化前 11fps
     // 优化后 15fps
     _batchConversionMarkers(glZoom) {
+        this._onlyHasPoint = undefined;
+        if (!this._constructorIsThis()) {
+            return [];
+        }
         const cPoints = [];
         const markers = [];
         const altitudes = [];
         const altitudeCache = {};
+        const layer = this.layer;
+        const layerOpts = layer.options;
+        const layerAltitude = layer.getAltitude ? layer.getAltitude() : 0;
+        const isCanvasRender = layer.isCanvasRender();
+        this._onlyHasPoint = true;
         //Traverse all Geo
         let idx = 0;
         for (let i = 0, len = this.layer._geoList.length; i < len; i++) {
             const geo = this.layer._geoList[i];
             const type = geo.getType();
             if (type === 'Point') {
-                const painter = geo._painter;
+                let painter = geo._painter;
                 if (!painter) {
-                    continue;
+                    painter = geo._getPainter();
                 }
                 const point = painter.getRenderPoints(PLACEMENT_CENTER)[0][0];
-                const altitude = geo.getAltitude();
+                const altitude = layerOpts['enableAltitude'] ? geo.getAltitude() : layerAltitude;
                 //减少方法的调用
                 if (altitudeCache[altitude] === undefined) {
                     altitudeCache[altitude] = painter.getAltitude();
@@ -270,6 +315,8 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
                 altitudes[idx] = altitudeCache[altitude];
                 markers[idx] = geo;
                 idx++;
+            } else {
+                this._onlyHasPoint = false;
             }
         }
         if (idx === 0) {
@@ -299,6 +346,17 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
                 TEMP_FIXEDEXTENT.set(fixedExtent.xmin, fixedExtent.ymin, fixedExtent.xmax, fixedExtent.ymax);
                 TEMP_FIXEDEXTENT._add(pts[i]);
                 geo._inCurrentView = TEMP_FIXEDEXTENT.intersects(containerExtent);
+            }
+            if (geo._inCurrentView) {
+                if (!geo.isVisible() || !isCanvasRender) {
+                    geo._inCurrentView = false;
+                }
+                //如果当前图层上只有点，整个checkGeo都不用执行了,这里已经把所有的点都判断了
+                if (this._onlyHasPoint && geo._inCurrentView) {
+                    this._hasPoint = true;
+                    geo._isCheck = true;
+                    this._geosToDraw.push(geo);
+                }
             }
         }
         return pts;
@@ -336,6 +394,10 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
             const dist1 = vec3.distance(TEMP_VEC3, cameraPosition);
             return dist1 - dist0;
         });
+    }
+
+    _constructorIsThis() {
+        return this.constructor === VectorLayerRenderer;
     }
 }
 
