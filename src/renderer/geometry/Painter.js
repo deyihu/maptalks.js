@@ -27,6 +27,7 @@ const TEMP_PAINT_EXTENT = new PointExtent();
 const TEMP_FIXED_EXTENT = new PointExtent();
 const TEMP_CLIP_EXTENT0 = new PointExtent();
 const TEMP_CLIP_EXTENT1 = new PointExtent();
+const TEMP_CLIP_EXTENT2 = new PointExtent();
 // const TEMP_CONTAINER_EXTENT = new PointExtent();
 
 const TEMP_BBOX = {
@@ -213,16 +214,32 @@ class Painter extends Class {
         const mapStateCache = renderer.mapStateCache;
 
         const map = this.getMap(),
+            geometry = this.geometry,
             containerOffset = this.containerOffset;
-        let glZoom;
+        let glZoom, containerExtent;
         if (mapStateCache) {
             glZoom = mapStateCache.glZoom;
+            containerExtent = mapStateCache.containerExtent;
         } else {
             glZoom = map.getGLZoom();
+            containerExtent = map.getContainerExtent();
         }
         let cPoints;
         const roundPoint = this.getLayer().options['roundPoint'];
         let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+        const symbolizers = this.symbolizers || [];
+        const symbolizersLen = symbolizers.length;
+        const geometryWithView = this._geometryWithView;
+        const clipBBoxBufferSize = renderer.layer.options['clipBBoxBufferSize'] || 3;
+        function isDashLine() {
+            for (let i = 0; i < symbolizersLen; i++) {
+                const symbolizer = symbolizers[i];
+                if (symbolizer.style && symbolizer.style['lineDasharray'] && symbolizer.style['lineDasharray'].length) {
+                    return true;
+                }
+            }
+            return false;
+        }
         function pointsContainerPoints(viewPoints = [], alts = []) {
             const pts = map._pointsToContainerPoints(viewPoints, glZoom, alts);
             for (let i = 0, len = pts.length; i < len; i++) {
@@ -240,6 +257,28 @@ class Painter extends Class {
                 miny = Math.min(p.y, miny);
                 maxx = Math.max(p.x, maxx);
                 maxy = Math.max(p.y, maxy);
+            }
+            if (geometryWithView === false && isDashLine()) {
+                TEMP_CLIP_EXTENT2.ymin = containerExtent.ymin;
+                if (TEMP_CLIP_EXTENT2.ymin < clipBBoxBufferSize) {
+                    TEMP_CLIP_EXTENT2.ymin = containerExtent.ymin - clipBBoxBufferSize;
+                }
+                TEMP_CLIP_EXTENT2.xmin = containerExtent.xmin - clipBBoxBufferSize;
+                TEMP_CLIP_EXTENT2.xmax = containerExtent.xmax + clipBBoxBufferSize;
+                TEMP_CLIP_EXTENT2.ymax = containerExtent.ymax + clipBBoxBufferSize;
+                if (geometry.getShell && geometry.getHoles) {
+                    return clipPolygon(pts, TEMP_CLIP_EXTENT2);
+                }
+                const clipPts = clipLine(pts, TEMP_CLIP_EXTENT2, false);
+                if (clipPts.length) {
+                    const points = [];
+                    clipPts.forEach(clipPt => {
+                        for (let i = 0, len = clipPt.length; i < len; i++) {
+                            points.push(clipPt[i].point);
+                        }
+                    });
+                    return points;
+                }
             }
             return pts;
         }
@@ -329,6 +368,7 @@ class Painter extends Class {
     }
 
     _clip(points, altitude) {
+        this._geometryWithView = false;
         // linestring polygon clip
         if (isNumber(altitude) && altitude !== 0) {
             return {
@@ -380,6 +420,7 @@ class Painter extends Class {
         const e = this.get2DExtent(null, TEMP_CLIP_EXTENT1);
         let clipPoints = points;
         if (e.within(extent2D)) {
+            this._geometryWithView = true;
             // if (this.geometry.getJSONType() === 'LineString') {
             //     // clip line with altitude
             //     return this._clipLineByAlt(clipPoints, altitude);
@@ -390,18 +431,24 @@ class Painter extends Class {
             };
         }
         const glExtent2D = glExtent._expand(lineWidth * map._glScale);
-        const { xmin, ymin, xmax, ymax } = glExtent2D;
-        const dx = Math.abs(xmax - xmin), dy = Math.abs(ymax - ymin);
-        const maxEdge = Math.max(dx, dy);
-        const r = maxEdge / 2;
-        TEMP_CLIP_EXTENT0.xmin = glExtent2D.xmin - r;
-        TEMP_CLIP_EXTENT0.xmax = glExtent2D.xmax + r;
-        TEMP_CLIP_EXTENT0.ymin = glExtent2D.ymin - r;
-        TEMP_CLIP_EXTENT0.ymax = glExtent2D.ymax + r;
+
+        TEMP_CLIP_EXTENT0.xmin = glExtent2D.xmin;
+        TEMP_CLIP_EXTENT0.xmax = glExtent2D.xmax;
+        TEMP_CLIP_EXTENT0.ymin = glExtent2D.ymin;
+        TEMP_CLIP_EXTENT0.ymax = glExtent2D.ymax;
 
         const smoothness = geometry.options['smoothness'];
         // if (this.geometry instanceof Polygon) {
         if (geometry.getShell && this.geometry.getHoles && !smoothness) {
+            //polygon buffer clip bbox
+            const { xmin, ymin, xmax, ymax } = glExtent2D;
+            const dx = Math.abs(xmax - xmin), dy = Math.abs(ymax - ymin);
+            const r = Math.sqrt(dx * dx + dy * dy);
+            const rx = (r - dx) / 2, ry = (r - dy) / 2;
+            TEMP_CLIP_EXTENT0.xmin = glExtent2D.xmin - rx;
+            TEMP_CLIP_EXTENT0.xmax = glExtent2D.xmax + rx;
+            TEMP_CLIP_EXTENT0.ymin = glExtent2D.ymin - ry;
+            TEMP_CLIP_EXTENT0.ymax = glExtent2D.ymax + ry;
             // clip the polygon to draw less and improve performance
             if (!Array.isArray(points[0])) {
                 clipPoints = clipPolygon(points, TEMP_CLIP_EXTENT0);
