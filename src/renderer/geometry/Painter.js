@@ -1,4 +1,4 @@
-import { isNumber, sign, pushIn } from '../../core/util';
+import { isNumber, sign, pushIn, isDashLine } from '../../core/util';
 import { clipPolygon, clipLine } from '../../core/util/path';
 import Class from '../../core/Class';
 import Size from '../../geo/Size';
@@ -227,19 +227,10 @@ class Painter extends Class {
         let cPoints;
         const roundPoint = this.getLayer().options['roundPoint'];
         let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
-        const symbolizers = this.symbolizers || [];
-        const symbolizersLen = symbolizers.length;
-        const geometryWithView = this._geometryWithView;
+        let needClip = true;
         const clipBBoxBufferSize = renderer.layer.options['clipBBoxBufferSize'] || 3;
-        function isDashLine() {
-            for (let i = 0; i < symbolizersLen; i++) {
-                const symbolizer = symbolizers[i];
-                if (symbolizer.style && symbolizer.style['lineDasharray'] && symbolizer.style['lineDasharray'].length) {
-                    return true;
-                }
-            }
-            return false;
-        }
+        const symbolizers = this.symbolizers;
+
         function pointsContainerPoints(viewPoints = [], alts = []) {
             const pts = map._pointsToContainerPoints(viewPoints, glZoom, alts);
             for (let i = 0, len = pts.length; i < len; i++) {
@@ -258,7 +249,7 @@ class Painter extends Class {
                 maxx = Math.max(p.x, maxx);
                 maxy = Math.max(p.y, maxy);
             }
-            if (geometryWithView === false && isDashLine()) {
+            if (needClip && isDashLine(symbolizers)) {
                 TEMP_CLIP_EXTENT2.ymin = containerExtent.ymin;
                 if (TEMP_CLIP_EXTENT2.ymin < clipBBoxBufferSize) {
                     TEMP_CLIP_EXTENT2.ymin = containerExtent.ymin - clipBBoxBufferSize;
@@ -291,6 +282,9 @@ class Painter extends Class {
             let clipped;
             if (!disableClip && geometry.options['enableClip']) {
                 clipped = this._clip(points, altitude);
+                if (clipped.inView) {
+                    needClip = false;
+                }
             } else {
                 clipped = {
                     points: points,
@@ -427,7 +421,8 @@ class Painter extends Class {
             // }
             return {
                 points: clipPoints,
-                altitude: altitude
+                altitude: altitude,
+                inView: true
             };
         }
         const glExtent2D = glExtent._expand(lineWidth * map._glScale);
