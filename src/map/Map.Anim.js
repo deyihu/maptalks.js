@@ -314,14 +314,14 @@ Map.include(/** @lends Map.prototype */{
         }
 
         // let preView = this.getView();
-        const renderer = this._getRenderer();
-        const framer = function (fn) {
-            renderer.callInNextFrame(fn);
-        };
+        // const renderer = this._getRenderer();
+        // const framer = function (fn) {
+        //     renderer.callInNextFrame(fn);
+        // };
         const player = this._animPlayer = Animation.animate({ k: [0, 1] }, {
             'easing': options['easing'] || 'out',
-            'duration': options['duration'] || 8,
-            'framer': framer
+            'duration': options['duration'] || 8
+            // 'framer': framer
         }, frame => {
             if (this.isRemoved()) {
                 player.finish();
