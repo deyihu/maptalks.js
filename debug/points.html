@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map - Display a map</title>
+<style type="text/css">
+    html,
+    body {
+        margin: 0px;
+        height: 100%;
+        width: 100%
+    }
+
+    .container {
+        width: 100%;
+        height: 800px;
+    }
+
+    .panel {
+        position: absolute;
+        z-index: 1;
+        top: 500px;
+        background-color: black;
+        color: white;
+        font-size: 23px;
+    }
+
+    .tool {
+        left: 100px;
+        top: 0px;
+        background-color: transparent !important;
+    }
+</style>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/three@0.109.0/examples/js/libs/stats.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maptalks/dist/maptalks.css">
+<script type="text/javascript" src="./../dist//maptalks.js"></script>
+
+<body>
+    <div class="panel tool">
+        <button onclick="updateVisible()">图层显示和隐藏</button>
+        <button onclick="updateOpacity()">透明度</button>
+        <button onclick="updateGeometries()">添加和删除图形</button>
+        <button onclick="updateStyle()">更新图形样式</button>
+        <button onclick="updateGeometryVisible()">显示和隐藏图形</button>
+    </div>
+    <!-- <div class="panel">
+        数据缓存区，实时调试
+    </div> -->
+    <div id="map" class="container"></div>
+
+    <script>
+
+        var geometies;
+        const style = {
+            markerType: 'ellipse',
+            markerWidth: 10,
+            markerHeight: 10,
+            markerLineWidth: 1
+        }, style1 = {
+            markerFile: './star.png'
+        };
+
+        function updateVisible() {
+            if (layer.isVisible()) {
+                layer.hide();
+            } else {
+                layer.show();
+            }
+        }
+
+        function updateOpacity() {
+            layer.getOpacity() === 1 ? layer.setOpacity(0.5) : layer.setOpacity(1);
+        }
+
+        function updateGeometries() {
+            if (layer.getGeometries().length === geometies.length) {
+                layer.removeGeometry(geometies.slice(0, geometies.length - 1000));
+            } else {
+                layer.addGeometry(geometies.slice(0, geometies.length - 1000))
+            }
+        }
+
+        function updateStyle() {
+            geometies.forEach(geo => {
+                let currentSytle = style1;
+                if (geo.getSymbol().markerFile) {
+                    currentSytle = style;
+                }
+                geo.setSymbol(currentSytle);
+            });
+        }
+
+        function updateGeometryVisible() {
+            geometies.slice(0, Infinity).forEach(geo => {
+                if (geo.isVisible()) {
+                    geo.hide();
+                } else {
+                    geo.show();
+                }
+            })
+        }
+
+        var map = new maptalks.Map('map', {
+            center: [120.77148332440129, 31.407443526543744],
+            zoom: 5,
+            seamlessZoom: true,
+            baseLayer: new maptalks.TileLayer('base', {
+                urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                subdomains: ['a', 'b', 'c', 'd'],
+                attribution: '&copy; <a href="http://osm.org">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>'
+            })
+        });
+        map.on('click', e => {
+            // console.log(e);
+        })
+
+        const layer = new maptalks.VectorLayer('layer', { hitDetect: false, geometryEvents: false, progressiveRender: true, forceRenderOnZooming: true }).addTo(map);
+
+
+        function getLngLats() {
+            const lnglat = [];
+            while (lnglat.length < 50000) {
+                const lng = 100 + Math.random() * 50, lat = 20 + Math.random() * 30;
+                lnglat.push([lng, lat]);
+            }
+            return lnglat;
+        }
+
+        function getColor(index) {
+            if (index > 1000) {
+                return 'red';
+            }
+            if (index > 500) {
+                return 'blue';
+            }
+            return 'green';
+        }
+
+        function addPoints() {
+            const lnglats = getLngLats();
+
+            const points = lnglats.map((lnglat, index) => {
+                try {
+                    const point = new maptalks.Marker(lnglat, {
+                        // symbol: styles
+                        symbol: {
+                            markerFile: './star.png'
+                        }
+                    });
+                    point.on('click', (e) => {
+                        console.log(e);
+                    })
+                    return point;
+                } catch (e) {
+                    console.log(d.lnglats, coordinates);
+                }
+            });
+            geometies = points;
+            layer.addGeometry(points.slice(0, Infinity));
+        }
+
+        addPoints();
+
+        var stats = new Stats();
+        stats.domElement.style.zIndex = 100;
+        document.body.appendChild(stats.domElement);
+
+        function animation() {
+            stats.update();
+            requestAnimationFrame(animation);
+        }
+        animation();
+
+    </script>
+</body>
+
+</html>
