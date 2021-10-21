@@ -41,7 +41,9 @@ const options = {
     'sortByDistanceToCamera': false,
     'roundPoint': false,
     'altitude': 0,
-    'clipBBoxBufferSize': 3
+    'clipBBoxBufferSize': 3,
+    'progressiveRender': false,
+    'progressiveCount': 500
 };
 // Polyline is for custom line geometry
 // const TYPES = ['LineString', 'Polyline', 'Polygon', 'MultiLineString', 'MultiPolygon'];

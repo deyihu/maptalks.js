@@ -107,6 +107,9 @@ class OverlayLayerRenderer extends CanvasRenderer {
 }
 
 function redraw(renderer) {
+    if (renderer.resetProgressive) {
+        renderer.resetProgressive();
+    }
     if (renderer.layer.options['drawImmediate']) {
         renderer.render();
     }

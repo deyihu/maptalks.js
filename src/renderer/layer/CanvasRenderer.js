@@ -162,6 +162,9 @@ class CanvasRenderer extends Class {
      */
     setToRedraw() {
         this._toRedraw = true;
+        if (this.resetProgressive) {
+            this.resetProgressive();
+        }
         return this;
     }
 

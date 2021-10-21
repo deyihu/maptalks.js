@@ -97,6 +97,7 @@ class MapCanvasRenderer extends MapRenderer {
             layerLimit = this.map.options['layerCanvasLimitOnInteracting'],
             l = layers.length;
         const baseLayer = map.getBaseLayer();
+        const isViewChanged = this.isViewChanged();
         let t = 0;
         for (let i = 0; i < l; i++) {
             const layer = layers[i];
@@ -110,6 +111,9 @@ class MapCanvasRenderer extends MapRenderer {
             const renderer = layer._getRenderer();
             if (!renderer) {
                 continue;
+            }
+            if ((isViewChanged || isInteracting) && renderer.resetProgressive) {
+                renderer.resetProgressive();
             }
             // if need to call layer's draw/drawInteracting
             const needsRedraw = this._checkLayerRedraw(layer);
@@ -305,9 +309,9 @@ class MapCanvasRenderer extends MapRenderer {
         if (!map) {
             return false;
         }
-        if (!this.isLayerCanvasUpdated() && !this.isViewChanged()) {
-            return false;
-        }
+        // if (!this.isLayerCanvasUpdated() && !this.isViewChanged()) {
+        //     return false;
+        // }
         if (!this.canvas) {
             this.createCanvas();
         }
@@ -343,6 +347,10 @@ class MapCanvasRenderer extends MapRenderer {
                 continue;
             }
             const layerImage = this._getLayerImage(layers[i]);
+            if (renderer.loopProgressive) {
+                renderer.cacheFrameRenderImage(layerImage);
+                renderer.loopProgressive();
+            }
             if (layerImage && layerImage['image']) {
                 if (layers[i] === map.getBaseLayer()) {
                     baseLayerImage = [layers[i], layerImage];

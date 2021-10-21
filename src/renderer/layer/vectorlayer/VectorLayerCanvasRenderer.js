@@ -5,6 +5,7 @@ import PointExtent from '../../../geo/PointExtent';
 import * as vec3 from '../../../core/util/vec3';
 import { now } from '../../../core/util/common';
 import { getPointsResultPts } from '../../../core/util';
+import Canvas from '../../../core/Canvas';
 const TEMP_EXTENT = new PointExtent();
 const TEMP_VEC3 = [];
 const TEMP_FIXEDEXTENT = new PointExtent();
@@ -20,6 +21,133 @@ const PLACEMENT_CENTER = 'center';
  * @param {VectorLayer} layer - layer to render
  */
 class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
+    constructor(layer) {
+        super(layer);
+        this._frameGeosToDraw = [];
+    }
+
+    _layerIsProgressiveRender() {
+        if (!this.layer) {
+            return false;
+        }
+        return !!this.layer.options.progressiveRender;
+    }
+
+    _needProgressiveRendering() {
+        return this.getFrameGeos().length > 0;
+    }
+
+    _getCanvasSize() {
+        const map = this.getMap();
+        const dpr = map.getDevicePixelRatio();
+        const size = map.getSize();
+        const width = size.width * dpr, height = size.height * dpr;
+        return {
+            width,
+            height
+        };
+    }
+
+    _checkCacheCanvas() {
+        if (!this._cacheCanvas) {
+            const { width, height } = this._getCanvasSize();
+            this._cacheCanvas = Canvas.createCanvas(width, height);
+            this._cacheCanvasContent = this._cacheCanvas.getContext('2d');
+        }
+        return this;
+    }
+
+    _clearCacheCanvas() {
+        if (this._layerIsProgressiveRender()) {
+            this._checkCacheCanvas();
+            const { width, height } = this._cacheCanvas;
+            Canvas.clearRect(this._cacheCanvasContent, 0, 0, width, height);
+            // this._cacheCanvasContent.clearRect(0, 0, this._cacheCanvas.width, this._cacheCanvas.height);
+        }
+        return this;
+    }
+
+    _resizeCacheCanvas() {
+        this._checkCacheCanvas();
+        if (this._cacheCanvas) {
+            const { width, height } = this._getCanvasSize();
+            if (width !== this._cacheCanvas.width || height !== this._cacheCanvas.height) {
+                this._cacheCanvas.width = width;
+                this._cacheCanvas.height = height;
+            }
+        }
+        return this;
+    }
+
+    resetProgressive() {
+        if (this.progressiveIndex >= 0) {
+            this._frameGeosToDraw = [];
+            this._clearCacheCanvas();
+            this.progressiveIndex = -1;
+            this.progressiveRenderEnd = false;
+        }
+        return this;
+    }
+
+    loopProgressive() {
+        if (this.progressiveIndex === undefined) {
+            this.progressiveIndex = 0;
+        }
+        if (this.progressiveIndex > 1 && !this._needProgressiveRendering()) {
+            return this;
+        }
+        if (this.layer._geoList.length > 0) {
+            this.progressiveIndex++;
+        }
+        return this;
+    }
+
+    getFrameGeos() {
+        if (!this._layerIsProgressiveRender()) {
+            return [];
+        }
+        if (this.progressiveIndex === undefined) {
+            this.progressiveIndex = 0;
+        }
+        const { progressiveCount } = this.layer.options;
+        const start = this.progressiveIndex * progressiveCount, end = (this.progressiveIndex + 1) * progressiveCount;
+        const geos = this.layer._geoList.slice(start, end);
+        return geos;
+    }
+
+    getCurrentGeos() {
+        if (!this._layerIsProgressiveRender()) {
+            return this.layer._geoList;
+        }
+        return this.getFrameGeos();
+    }
+
+    cacheFrameRenderImage(layerImage) {
+        if (layerImage && this._layerIsProgressiveRender() && !this.progressiveRenderEnd && this._geosToDraw.length > 0 && this.getCurrentGeos().length > 0) {
+            this._clearCacheCanvas();
+            const point = layerImage['point'].round();
+            const dpr = this.getMap().getDevicePixelRatio();
+            if (dpr !== 1) {
+                point._multi(dpr);
+            }
+            const ctx = this._cacheCanvasContent;
+            const { width, height } = this._cacheCanvas;
+            ctx.drawImage(layerImage.image, 0, 0, width, height, point.x, point.y, width, height);
+            this.progressiveRenderEnd = this.getCurrentGeos().length === 0;
+        }
+    }
+
+    drawCacheCanvas() {
+        if (this._cacheCanvas) {
+            this.context.canvas._drawn = true;
+            this.context.drawImage(this._cacheCanvas, 0, 0, this._cacheCanvas.width, this._cacheCanvas.height);
+        }
+    }
+
+    resizeCanvas(canvasSize) {
+        super.resizeCanvas(canvasSize);
+        return this._resizeCacheCanvas();
+    }
 
     getImageData() {
         //如果不开启geometry event 或者 渲染频率很高 不要取缓存了，因为getImageData是个很昂贵的操作
@@ -60,6 +188,9 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     }
 
     needToRedraw() {
+        if (this._needProgressiveRendering()) {
+            return true;
+        }
         const map = this.getMap();
         if (map.isInteracting() && this.layer.options['enableAltitude']) {
             return true;
@@ -121,6 +252,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
             this._drawnRes = res;
         }
         this._sortByDistanceToCamera(map.cameraPosition);
+        this.drawCacheCanvas();
         for (let i = 0, l = this._geosToDraw.length; i < l; i++) {
             const geo = this._geosToDraw[i];
             if (!geo._isCheck) {
@@ -151,7 +283,16 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     }
 
     forEachGeo(fn, context) {
-        this.layer.forEach(fn, context);
+        // this.layer.forEach(fn, context);
+        const copyOnWrite = this.getCurrentGeos();
+        for (let i = 0, l = copyOnWrite.length; i < l; i++) {
+            if (!context) {
+                fn(copyOnWrite[i], i);
+            } else {
+                fn.call(context, copyOnWrite[i], i);
+            }
+        }
+        return this;
     }
 
     drawGeos() {
@@ -164,6 +305,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
             this.forEachGeo(this.checkGeo, this);
         }
         this._sortByDistanceToCamera(this.getMap().cameraPosition);
+        this.drawCacheCanvas();
         for (let i = 0, len = this._geosToDraw.length; i < len; i++) {
             this._geosToDraw[i]._paint();
             this._geosToDraw[i]._cPoint = undefined;
@@ -175,6 +317,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     prepareToDraw() {
         this._hasPoint = false;
         this._geosToDraw = [];
+        // this._frameGeosToDraw = [];
     }
 
     checkGeo(geo) {
@@ -214,6 +357,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         }
         geo._isCheck = true;
         this._geosToDraw.push(geo);
+        this._frameGeosToDraw.push(geo);
     }
 
     onZoomEnd() {
@@ -226,6 +370,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
             g.onHide();
         });
         delete this._geosToDraw;
+        delete this._frameGeosToDraw;
     }
 
     onGeometryPropertiesChange(param) {
@@ -248,7 +393,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     }
 
     identifyAtPoint(point, options = {}) {
-        const geometries = this._geosToDraw;
+        const geometries = this._layerIsProgressiveRender() ? this._frameGeosToDraw : this._geosToDraw;
         if (!geometries) {
             return [];
         }
@@ -298,9 +443,10 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         const isCanvasRender = layer.isCanvasRender();
         this._onlyHasPoint = true;
         //Traverse all Geo
+        const geoList = this.getCurrentGeos();
         let idx = 0;
-        for (let i = 0, len = this.layer._geoList.length; i < len; i++) {
-            const geo = this.layer._geoList[i];
+        for (let i = 0, len = geoList.length; i < len; i++) {
+            const geo = geoList[i];
             const type = geo.getType();
             if (type === 'Point') {
                 let painter = geo._painter;
@@ -363,6 +509,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
                     this._hasPoint = true;
                     geo._isCheck = true;
                     this._geosToDraw.push(geo);
+                    this._frameGeosToDraw.push(geo);
                 }
             }
         }
