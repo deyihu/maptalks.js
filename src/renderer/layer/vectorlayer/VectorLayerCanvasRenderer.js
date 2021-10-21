@@ -103,7 +103,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     }
 
     getFrameGeos() {
-        if (!this._layerIsProgressiveRender()) {
+        if (!this._layerIsProgressiveRender() || this.progressiveRenderEnd) {
             return [];
         }
         if (this.progressiveIndex === undefined) {
