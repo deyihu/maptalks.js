@@ -25,6 +25,8 @@ const TEMP_EXTENT = new PointExtent();
  * @property {Boolean} [options.roundPoint=false]  - round point before painting to improve performance, but will cause geometry shaking in animation
  * @property {Number} [options.altitude=0]           - layer altitude
  * @property {Boolean} [options.debug=false]         - whether the geometries on the layer is in debug mode.
+ * @property {Boolean} [options.progressiveRender=false]         - whether open progressive Render
+ * @property {Number} [options.progressiveCount=500]         - render geometry count per frame
  * @memberOf VectorLayer
  * @instance
  */
