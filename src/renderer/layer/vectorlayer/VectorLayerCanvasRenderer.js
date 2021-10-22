@@ -62,7 +62,6 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
             this._checkCacheCanvas();
             const { width, height } = this._cacheCanvas;
             Canvas.clearRect(this._cacheCanvasContent, 0, 0, width, height);
-            // this._cacheCanvasContent.clearRect(0, 0, this._cacheCanvas.width, this._cacheCanvas.height);
         }
         return this;
     }
