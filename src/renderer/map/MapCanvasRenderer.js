@@ -389,11 +389,12 @@ class MapCanvasRenderer extends MapRenderer {
 
     setToRedraw() {
         const layers = this._getAllLayerToRender();
+        const documentVisibilityStateChange = true;
         for (let i = 0, l = layers.length; i < l; i++) {
             const renderer = layers[i].getRenderer();
             if (renderer && renderer.canvas && renderer.setToRedraw) {
                 //to fix lost webgl context
-                renderer.setToRedraw();
+                renderer.setToRedraw(documentVisibilityStateChange);
             }
         }
     }

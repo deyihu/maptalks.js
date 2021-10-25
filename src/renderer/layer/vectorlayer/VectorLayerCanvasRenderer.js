@@ -28,9 +28,9 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     /**
    * Set to redraw, ask map to call draw/drawOnInteracting to redraw the layer
    */
-    setToRedraw(isOpacityChange) {
+    setToRedraw(notResetProgressive) {
         super.setToRedraw();
-        if (!isOpacityChange) {
+        if (!notResetProgressive) {
             this.resetProgressive();
         }
         return this;
