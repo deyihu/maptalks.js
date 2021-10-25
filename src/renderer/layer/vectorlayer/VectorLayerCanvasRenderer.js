@@ -36,6 +36,13 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         return this;
     }
 
+    _checkProgressiveIndex() {
+        if (this.progressiveIndex === undefined) {
+            this.progressiveIndex = 0;
+        }
+        return this;
+    }
+
     _layerIsProgressiveRender() {
         if (!this.layer) {
             return false;
@@ -99,9 +106,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     }
 
     loopProgressive() {
-        if (this.progressiveIndex === undefined) {
-            this.progressiveIndex = 0;
-        }
+        this._checkProgressiveIndex();
         if (this.progressiveIndex > 1 && !this._needProgressiveRendering()) {
             return this;
         }
@@ -115,9 +120,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         if (!this._layerIsProgressiveRender() || this.progressiveRenderEnd) {
             return [];
         }
-        if (this.progressiveIndex === undefined) {
-            this.progressiveIndex = 0;
-        }
+        this._checkProgressiveIndex();
         const { progressiveCount } = this.layer.options;
         const start = this.progressiveIndex * progressiveCount, end = (this.progressiveIndex + 1) * progressiveCount;
         const geos = this.layer._geoList.slice(start, end);
@@ -147,7 +150,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     }
 
     drawCacheCanvas() {
-        if (this._cacheCanvas) {
+        if (this._cacheCanvas && this.context) {
             this.context.canvas._drawn = true;
             this.context.drawImage(this._cacheCanvas, 0, 0, this._cacheCanvas.width, this._cacheCanvas.height);
         }
@@ -326,7 +329,6 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     prepareToDraw() {
         this._hasPoint = false;
         this._geosToDraw = [];
-        // this._frameGeosToDraw = [];
     }
 
     checkGeo(geo) {
