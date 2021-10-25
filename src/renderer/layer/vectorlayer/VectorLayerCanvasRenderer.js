@@ -25,6 +25,16 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         super(layer);
         this._frameGeosToDraw = [];
     }
+    /**
+   * Set to redraw, ask map to call draw/drawOnInteracting to redraw the layer
+   */
+    setToRedraw(isOpacityChange) {
+        super.setToRedraw();
+        if (!isOpacityChange) {
+            this.resetProgressive();
+        }
+        return this;
+    }
 
     _layerIsProgressiveRender() {
         if (!this.layer) {
