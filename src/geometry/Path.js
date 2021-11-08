@@ -1,9 +1,8 @@
-import { isNil, isNumber, isArrayHasData, isFunction } from '../core/util';
+import { isNil, isNumber, isArrayHasData, isFunction, getPointsResultPts } from '../core/util';
 import { Animation } from '../core/Animation';
 import Coordinate from '../geo/Coordinate';
 import Extent from '../geo/Extent';
 import Geometry from './Geometry';
-import Polygon from './Polygon';
 import simplify from 'simplify-js';
 
 /**
@@ -39,20 +38,6 @@ const options = {
  * @extends Geometry
  */
 class Path extends Geometry {
-
-    getOutline() {
-        const painter = this._getPainter();
-        if (!painter) {
-            return null;
-        }
-        const extent = this.getExtent();
-        return new Polygon(extent.toArray(), {
-            symbol: {
-                'lineWidth': 1,
-                'lineColor': '6b707b'
-            }
-        });
-    }
 
     /**
      * Show the linestring with animation
@@ -230,7 +215,7 @@ class Path extends Geometry {
      * @returns {Point[]}
      * @private
      */
-    _getPath2DPoints(prjCoords, disableSimplify, zoom) {
+    _getPath2DPoints(prjCoords, disableSimplify, res) {
         if (!isArrayHasData(prjCoords)) {
             return [];
         }
@@ -244,19 +229,23 @@ class Path extends Geometry {
             prjCoords = simplify(prjCoords, tolerance, false);
             this._simplified = prjCoords.length < count;
         }
-        if (isNil(zoom)) {
-            zoom = map.getZoom();
+        if (!res) {
+            res = map._getResolution();
         }
         if (!Array.isArray(prjCoords)) {
-            return map._prjToPoint(prjCoords, zoom);
+            return map._prjToPointAtRes(prjCoords, res);
         } else {
+            let resultPoints = [];
+            const glPointKey = '_glPt';
             if (!Array.isArray(prjCoords[0])) {
-                return map._prjsToPoints(prjCoords, zoom);
+                resultPoints = getPointsResultPts(prjCoords, glPointKey);
+                return map._prjsToPointsAtRes(prjCoords, res, resultPoints);
             }
             const pts = [];
             for (let i = 0, len = prjCoords.length; i < len; i++) {
                 const prjCoord = prjCoords[i];
-                const pt = map._prjsToPoints(prjCoord, zoom);
+                resultPoints = getPointsResultPts(prjCoord, glPointKey);
+                const pt = map._prjsToPointsAtRes(prjCoord, res, resultPoints);
                 pts.push(pt);
             }
             return pts;

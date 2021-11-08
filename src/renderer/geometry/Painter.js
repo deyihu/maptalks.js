@@ -28,6 +28,7 @@ const TEMP_FIXED_EXTENT = new PointExtent();
 const TEMP_CLIP_EXTENT0 = new PointExtent();
 const TEMP_CLIP_EXTENT1 = new PointExtent();
 const TEMP_CLIP_EXTENT2 = new PointExtent();
+const PROJECTION = {};
 // const TEMP_CONTAINER_EXTENT = new PointExtent();
 
 const TEMP_BBOX = {
@@ -52,7 +53,7 @@ class Painter extends Class {
         super();
         this.geometry = geometry;
         this.symbolizers = this._createSymbolizers();
-        this._altAtGLZoom = this._getGeometryAltitude();
+        this._altAtGL = this._getGeometryAltitude();
     }
 
     getMap() {
@@ -107,6 +108,7 @@ class Painter extends Class {
      * @return {Point[]} points to render
      */
     getRenderPoints(placement) {
+        this._verifyProjection();
         if (!this._renderPoints) {
             this._renderPoints = {};
         }
@@ -123,7 +125,7 @@ class Painter extends Class {
      * for strokeAndFillSymbolizer
      * @return {Object[]} resources to render vector
      */
-    getPaintParams(dx, dy, ignoreAltitude, ptkey = '_pt') {
+    getPaintParams(dx, dy, ignoreAltitude, disableClip, ptkey = '_pt') {
         const renderer = this.getLayer()._getRenderer();
         const mapStateCache = renderer.mapStateCache;
         let resolution, pitch, bearing, glScale, containerExtent;
@@ -187,7 +189,7 @@ class Painter extends Class {
             points = params[0];
 
         const mapExtent = containerExtent;
-        const cPoints = this._pointContainerPoints(points, dx, dy, ignoreAltitude, this._hitPoint && !mapExtent.contains(this._hitPoint), null, ptkey);
+        const cPoints = this._pointContainerPoints(points, dx, dy, ignoreAltitude, disableClip || this._hitPoint && !mapExtent.contains(this._hitPoint), null, ptkey);
         if (!cPoints) {
             return null;
         }
@@ -216,24 +218,24 @@ class Painter extends Class {
         const map = this.getMap(),
             geometry = this.geometry,
             containerOffset = this.containerOffset;
-        let glZoom, containerExtent;
+        let glRes, containerExtent;
         if (mapStateCache) {
-            glZoom = mapStateCache.glZoom;
+            glRes = mapStateCache.glRes;
             containerExtent = mapStateCache.containerExtent;
         } else {
-            glZoom = map.getGLZoom();
+            glRes = map.getGLRes();
             containerExtent = map.getContainerExtent();
         }
         let cPoints;
         const roundPoint = this.getLayer().options['roundPoint'];
         let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
-        let needClip = true;
+        let needClip = !disableClip;
         const clipBBoxBufferSize = renderer.layer.options['clipBBoxBufferSize'] || 3;
         const symbolizers = this.symbolizers;
 
         function pointsContainerPoints(viewPoints = [], alts = []) {
             let pts = getPointsResultPts(viewPoints, ptkey);
-            pts = map._pointsToContainerPoints(viewPoints, glZoom, alts, pts);
+            pts = map._pointsAtResToContainerPoints(viewPoints, glRes, alts, pts);
             for (let i = 0, len = pts.length; i < len; i++) {
                 const p = pts[i];
                 p._sub(containerOffset);
@@ -348,7 +350,7 @@ class Painter extends Class {
             if (ignoreAltitude) {
                 altitude = 0;
             }
-            cPoints = map._pointToContainerPoint(points, glZoom, altitude)._sub(containerOffset);
+            cPoints = map._pointAtResToContainerPoint(points, glRes, altitude)._sub(containerOffset);
             if (dx || dy) {
                 cPoints._add(dx, dy);
             }
@@ -401,7 +403,7 @@ class Painter extends Class {
             pitch = mapStateCache.pitch;
         } else {
             _2DExtent = map._get2DExtent();
-            glExtent = map._get2DExtent(map.getGLZoom());
+            glExtent = map._get2DExtentAtRes(map.getGLRes());
             pitch = map.getPitch();
         }
         let extent2D = _2DExtent._expand(lineWidth);
@@ -798,7 +800,7 @@ class Painter extends Class {
     }
 
     repaint() {
-        this._altAtGLZoom = this._getGeometryAltitude();
+        this._altAtGL = this._getGeometryAltitude();
         this.removeCache();
         const layer = this.getLayer();
         if (!layer) {
@@ -849,12 +851,12 @@ class Painter extends Class {
     getAltitude() {
         const propAlt = this.geometry.getAltitude();
         if (propAlt !== this._propAlt) {
-            this._altAtGLZoom = this._getGeometryAltitude();
+            this._altAtGL = this._getGeometryAltitude();
         }
-        if (!this._altAtGLZoom) {
+        if (!this._altAtGL) {
             return 0;
         }
-        return this._altAtGLZoom;
+        return this._altAtGL;
     }
 
     getMinAltitude() {
@@ -907,12 +909,12 @@ class Painter extends Class {
 
     _meterToPoint(center, altitude) {
         const map = this.getMap();
-        const z = map.getGLZoom();
-        return map.distanceToPoint(altitude, 0, z, center).x * sign(altitude);
+        const glRes = map.getGLRes();
+        return map.distanceToPointAtRes(altitude, 0, glRes, center).x * sign(altitude);
     }
 
     _verifyProjection() {
-        const projection = this.geometry._getProjection();
+        const projection = this.geometry._getProjection() || PROJECTION;
         if (this._projCode && this._projCode !== projection.code) {
             this.removeCache();
         }
