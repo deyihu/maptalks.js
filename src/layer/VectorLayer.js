@@ -146,6 +146,13 @@ class VectorLayer extends OverlayLayer {
             if (!geo || !geo.isVisible() || !painter || !geo.options['interactive']) {
                 continue;
             }
+
+            const isPoint = geo._isPoint();
+            if (isInMapView && isPoint && painter._containerBbox) {
+                if (containerPointOutContainerBBox(cp, painter._containerBbox)) {
+                    continue;
+                }
+            }
             // bbox not contains mousepoint
             const isPoly = geo._isPoly();
             const isNotComplexSymbol = painter._isNotComplexSymbol && painter._isNotComplexSymbol();
@@ -157,7 +164,7 @@ class VectorLayer extends OverlayLayer {
             }
             //其他的图形或者复合样式仍然保持原来的逻辑
             if (!polyAndNotComplexSymbol) {
-                if ((!(geo instanceof LineString) || (!geo._getArrowStyle() && !(geo instanceof Curve)))) {
+                if (!isPoint && (!(geo instanceof LineString) || (!geo._getArrowStyle() && !(geo instanceof Curve)))) {
                     // Except for LineString with arrows or curves
                     let extent = geo.getContainerExtent(TEMP_EXTENT);
                     if (tolerance) {

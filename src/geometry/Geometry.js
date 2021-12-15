@@ -530,6 +530,10 @@ class Geometry extends JSONAble(Eventable(Handlerable(Class))) {
             (this.getGeometries && ['MultiPolygon', 'MultiLineString'].indexOf(this.getType()) > -1);
     }
 
+    _isPoint() {
+        return ['Point', 'MultiPoint'].indexOf(this.getType()) > -1;
+    }
+
     _containsPoint(containerPoint, t, mapSize) {
         const painter = this._getPainter();
         if (!painter) {

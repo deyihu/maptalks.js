@@ -289,7 +289,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
             return [];
         }
         const cPoints = [];
-        const markers = [];
+        const markers = [], multiPoints = [];
         const altitudes = [];
         const altitudeCache = {};
         const layer = this.layer;
@@ -302,6 +302,11 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         for (let i = 0, len = this.layer._geoList.length; i < len; i++) {
             const geo = this.layer._geoList[i];
             const type = geo.getType();
+            if (type === 'MultiPoint') {
+                multiPoints.push(geo);
+                this._onlyHasPoint = false;
+                continue;
+            }
             if (type === 'Point') {
                 let painter = geo._painter;
                 if (!painter) {
@@ -321,6 +326,28 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
                 this._onlyHasPoint = false;
             }
         }
+        const extentCache = {};
+        for (let i = 0, len = multiPoints.length; i < len; i++) {
+            const geos = multiPoints[i].getGeometries();
+            for (let j = 0, len1 = geos.length; j < len1; j++) {
+                const geo = geos[j];
+                const painter = geo._getPainter();
+                const symbolkey = geo.getSymbolHash();
+                let fixedExtent;
+                if (symbolkey) {
+                    //相同的symbol 不要重复计算
+                    fixedExtent = extentCache[symbolkey] = (extentCache[symbolkey] || painter.getFixedExtent());
+                } else {
+                    fixedExtent = painter.getFixedExtent();
+                }
+                painter._initContainerBBox();
+                TEMP_FIXEDEXTENT.set(fixedExtent.xmin, fixedExtent.ymin, fixedExtent.xmax, fixedExtent.ymax);
+                painter._containerBbox.minx = TEMP_FIXEDEXTENT.xmin;
+                painter._containerBbox.miny = TEMP_FIXEDEXTENT.ymin;
+                painter._containerBbox.maxx = TEMP_FIXEDEXTENT.xmax;
+                painter._containerBbox.maxy = TEMP_FIXEDEXTENT.ymax;
+            }
+        }
         if (idx === 0) {
             return [];
         }
@@ -329,7 +356,6 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         pts = map._pointsAtResToContainerPoints(cPoints, glRes, altitudes, pts);
         const containerExtent = map.getContainerExtent();
         const { xmax, ymax, xmin, ymin } = containerExtent;
-        const extentCache = {};
         for (let i = 0, len = markers.length; i < len; i++) {
             const geo = markers[i];
             geo._cPoint = pts[i];
@@ -340,20 +366,28 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
             const { x, y } = pts[i];
             //Is the point in view
             geo._inCurrentView = (x >= xmin && y >= ymin && x <= xmax && y <= ymax);
+            // if (!geo._inCurrentView) {
+            const symbolkey = geo.getSymbolHash();
+            let fixedExtent;
+            if (symbolkey) {
+                //相同的symbol 不要重复计算
+                fixedExtent = extentCache[symbolkey] = (extentCache[symbolkey] || geo._painter.getFixedExtent());
+            } else {
+                fixedExtent = geo._painter.getFixedExtent();
+            }
+            TEMP_FIXEDEXTENT.set(fixedExtent.xmin, fixedExtent.ymin, fixedExtent.xmax, fixedExtent.ymax);
+            TEMP_FIXEDEXTENT._add(pts[i]);
             //不在视野内的，再用fixedExtent 精确判断下
             if (!geo._inCurrentView) {
-                const symbolkey = geo.getSymbolHash();
-                let fixedExtent;
-                if (symbolkey) {
-                    //相同的symbol 不要重复计算
-                    fixedExtent = extentCache[symbolkey] = (extentCache[symbolkey] || geo._painter.getFixedExtent());
-                } else {
-                    fixedExtent = geo._painter.getFixedExtent();
-                }
-                TEMP_FIXEDEXTENT.set(fixedExtent.xmin, fixedExtent.ymin, fixedExtent.xmax, fixedExtent.ymax);
-                TEMP_FIXEDEXTENT._add(pts[i]);
                 geo._inCurrentView = TEMP_FIXEDEXTENT.intersects(containerExtent);
             }
+            const painter = geo._painter;
+            painter._initContainerBBox();
+            painter._containerBbox.minx = TEMP_FIXEDEXTENT.xmin;
+            painter._containerBbox.miny = TEMP_FIXEDEXTENT.ymin;
+            painter._containerBbox.maxx = TEMP_FIXEDEXTENT.xmax;
+            painter._containerBbox.maxy = TEMP_FIXEDEXTENT.ymax;
+            // }
             if (geo._inCurrentView) {
                 if (!geo.isVisible() || !isCanvasRender) {
                     geo._inCurrentView = false;

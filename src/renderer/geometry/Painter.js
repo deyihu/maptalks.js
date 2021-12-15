@@ -360,10 +360,18 @@ class Painter extends Class {
             this._containerBbox = { ...TEMP_BBOX };
         }
         if (!this.isHitTesting()) {
-            this._containerBbox.minx = minx;
-            this._containerBbox.miny = miny;
-            this._containerBbox.maxx = maxx;
-            this._containerBbox.maxy = maxy;
+            if (geometry._isPoint() && cPoints && cPoints.length) {
+                const { x, y } = cPoints[0];
+                this._containerBbox.minx += x;
+                this._containerBbox.miny += y;
+                this._containerBbox.maxx += x;
+                this._containerBbox.maxy += y;
+            } else {
+                this._containerBbox.minx = minx;
+                this._containerBbox.miny = miny;
+                this._containerBbox.maxx = maxx;
+                this._containerBbox.maxy = maxy;
+            }
         }
         return cPoints;
     }
@@ -937,6 +945,13 @@ class Painter extends Class {
 
     _isNotComplexSymbol() {
         return this.symbolizers.length === 1;
+    }
+
+    _initContainerBBox() {
+        if (!this._containerBbox) {
+            this._containerBbox = { ...TEMP_BBOX };
+        }
+        return this;
     }
 }
 

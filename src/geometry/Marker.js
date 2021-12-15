@@ -5,7 +5,7 @@ import Geometry from './Geometry';
 import Painter from '../renderer/geometry/Painter';
 import { getMarkerFixedExtent, isVectorSymbol, isImageSymbol, isPathSymbol, DYNAMIC_SYMBOL_PROPS as propsToCheck, SIZE_SYMBOL_PROPS as sizeProps } from '../core/util/marker';
 import { isFunctionDefinition, loadGeoSymbol } from '../core/mapbox';
-import { isNil } from '../core/util';
+import { containerPointInMapView, containerPointOutContainerBBox, isNil } from '../core/util';
 
 const TEMP_EXTENT = new PointExtent();
 
@@ -26,7 +26,7 @@ const options = {
         'markerWidth': 24,
         'markerHeight': 34
     },
-    'hitTestForEvent' : false
+    'hitTestForEvent': false
 };
 
 /**
@@ -68,14 +68,14 @@ class Marker extends CenterMixin(Geometry) {
         const anchor = this.getMap().coordToContainerPoint(coord);
         return new Marker(coord, {
             'symbol': {
-                'markerType' : 'square',
-                'markerWidth' : extent.getWidth(),
-                'markerHeight' : extent.getHeight(),
+                'markerType': 'square',
+                'markerWidth': extent.getWidth(),
+                'markerHeight': extent.getHeight(),
                 'markerLineWidth': 1,
                 'markerLineColor': '6b707b',
-                'markerFill' : 'rgba(0, 0, 0, 0)',
-                'markerDx' : extent.xmin - (anchor.x - extent.getWidth() / 2),
-                'markerDy' : extent.ymin - (anchor.y - extent.getHeight() / 2)
+                'markerFill': 'rgba(0, 0, 0, 0)',
+                'markerDx': extent.xmin - (anchor.x - extent.getWidth() / 2),
+                'markerDy': extent.ymin - (anchor.y - extent.getHeight() / 2)
             }
         });
     }
@@ -180,7 +180,19 @@ class Marker extends CenterMixin(Geometry) {
         return isVectorSymbol(symbol) || isPathSymbol(symbol) || isImageSymbol(symbol);
     }
 
-    _containsPoint(point, t) {
+    _containsPoint(point, t, mapSize) {
+        const painter = this._getPainter();
+        if (!painter) {
+            return false;
+        }
+        const isInMapView = containerPointInMapView(point, mapSize);
+        const isPoint = this._isPoint();
+        //bbox not contains mousepoint
+        if (isInMapView && isPoint && painter._containerBbox) {
+            if (containerPointOutContainerBBox(point, painter._containerBbox)) {
+                return false;
+            }
+        }
         let extent = this.getContainerExtent();
         if (t) {
             extent = extent.expand(t);
