@@ -1,5 +1,5 @@
 import Browser from '../core/Browser';
-import { isNil } from '../core/util';
+import { containerPointInMapView, containerPointOutContainerBBox, isNil } from '../core/util';
 import Extent from '../geo/Extent';
 import Geometry from '../geometry/Geometry';
 import OverlayLayer from './OverlayLayer';
@@ -133,22 +133,42 @@ class VectorLayer extends OverlayLayer {
                 return hits;
             }
         }
+        const mapSize = map.getSize();
+        const isInMapView = containerPointInMapView(cp, mapSize);
+        //如果鼠标位置在当前地图视野内，仅仅需要判断render的_geosToDraw就可以了，无需判断所有的geolist
+        const geosToDraw = renderer._geosToDraw || [];
+        if (isInMapView && geosToDraw && geosToDraw.length) {
+            geometries = geosToDraw;
+        }
         for (let i = geometries.length - 1; i >= 0; i--) {
             const geo = geometries[i];
-            if (!geo || !geo.isVisible() || !geo._getPainter() || !geo.options['interactive']) {
+            const painter = geo._getPainter();
+            if (!geo || !geo.isVisible() || !painter || !geo.options['interactive']) {
                 continue;
             }
-            if (!(geo instanceof LineString) || (!geo._getArrowStyle() && !(geo instanceof Curve))) {
-                // Except for LineString with arrows or curves
-                let extent = geo.getContainerExtent(TEMP_EXTENT);
-                if (tolerance) {
-                    extent = extent._expand(tolerance);
-                }
-                if (!extent || !extent.contains(cp)) {
+            // bbox not contains mousepoint
+            const isPoly = geo._isPoly();
+            const isNotComplexSymbol = painter._isNotComplexSymbol && painter._isNotComplexSymbol();
+            const polyAndNotComplexSymbol = isPoly && isNotComplexSymbol;
+            if (isInMapView && polyAndNotComplexSymbol && painter._containerBbox) {
+                if (containerPointOutContainerBBox(cp, painter._containerBbox)) {
                     continue;
                 }
             }
-            if (geo._containsPoint(cp, tolerance) && (!filter || filter(geo))) {
+            //其他的图形或者复合样式仍然保持原来的逻辑
+            if (!polyAndNotComplexSymbol) {
+                if ((!(geo instanceof LineString) || (!geo._getArrowStyle() && !(geo instanceof Curve)))) {
+                    // Except for LineString with arrows or curves
+                    let extent = geo.getContainerExtent(TEMP_EXTENT);
+                    if (tolerance) {
+                        extent = extent._expand(tolerance);
+                    }
+                    if (!extent || !extent.contains(cp)) {
+                        continue;
+                    }
+                }
+            }
+            if (geo._containsPoint(cp, tolerance, isInMapView) && (!filter || filter(geo))) {
                 hits.push(geo);
                 if (options['count']) {
                     if (hits.length >= options['count']) {
