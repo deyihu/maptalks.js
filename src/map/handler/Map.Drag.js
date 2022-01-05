@@ -1,4 +1,4 @@
-import { now } from '../../core/util';
+import { now, sign } from '../../core/util';
 import { preventDefault, getEventContainerPoint } from '../../core/util/dom';
 import Handler from '../../handler/Handler';
 import DragHandler from '../../handler/Drag';
@@ -123,6 +123,7 @@ class MapDragHandler extends Handler {
         if (!this.startDragTime) {
             return;
         }
+        const isTouch = param.domEvent.type === 'touchend';
         const map = this.target;
         let t = now() - this.startDragTime;
         const mx = param['mousePos'].x,
@@ -133,8 +134,9 @@ class MapDragHandler extends Handler {
         this._clear();
 
         if (map.options['panAnimation'] && !param.interupted && map._verifyExtent(map._getPrjCenter()) && t < 280 && Math.abs(dy) + Math.abs(dx) > 5) {
-            t = 5 * t * (Math.abs(dx) + Math.abs(dy)) / 500;
-            map.panBy(new Point(dx, dy), { 'duration' : t });
+            t = 5 * t;
+            const dscale = isTouch ? 5 : 2.8;
+            map.panBy(new Point(dx * dscale, dy * dscale), { 'duration': isTouch ? t * 3 : t * 2, 'easing': 'outExpo' });
         } else {
             map.onMoveEnd(param);
         }
@@ -205,13 +207,13 @@ class MapDragHandler extends Handler {
         this._clear();
         const t = now() - this.startDragTime;
         map.onDragRotateEnd(param);
-        if (Math.abs(bearing - this.startBearing) > 20 && (this._rotateMode === 'rotate' || this._rotateMode === 'rotate_pitch') && !param.interupted && t < 400) {
+        if (map.options['rotateAnimation'] && Math.abs(bearing - this.startBearing) > 20 && (this._rotateMode === 'rotate' || this._rotateMode === 'rotate_pitch') && !param.interupted && t < 400) {
             const bearing = map.getBearing();
             map._animateTo({
-                'bearing' : bearing + this._db / 2
+                'bearing': bearing + this._db / 1.5
             }, {
-                'easing'  : 'out',
-                'duration' : 800
+                'easing': 'outQuint',
+                'duration': 1600
             });
         }
     }
