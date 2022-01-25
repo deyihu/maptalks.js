@@ -52,6 +52,15 @@ if (!IS_NODE) {
 
     const devicePixelRatio = (window.devicePixelRatio || (window.screen.deviceXDPI / window.screen.logicalXDPI));
 
+    let decodeImageInWorker = false;
+    try {
+        const offCanvas = new OffscreenCanvas(2, 2);
+        offCanvas.getContext('2d');
+        decodeImageInWorker = true;
+    } catch (err) {
+        decodeImageInWorker = false;
+    }
+
     Browser = {
         ie: ie,
         ielt9: ie && !document.addEventListener,
@@ -91,7 +100,8 @@ if (!IS_NODE) {
         webgl: webgl,
         imageBitMap,
         resizeObserver,
-        btoa
+        btoa,
+        decodeImageInWorker
     };
 }
 

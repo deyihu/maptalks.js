@@ -488,3 +488,29 @@ export function containerPointOutContainerBBox(containerPoint, containerBBox) {
     return bboxValidate && (x < minx - lineWidth || x > maxx + lineWidth ||
         y < miny - lineWidth || y > maxy + lineWidth);
 }
+
+let BITMAP_CTX;
+if (Browser.decodeImageInWorker) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    BITMAP_CTX = canvas.getContext('2d');
+}
+export function getImageBitMap(data, cb) {
+    const imageData = BITMAP_CTX.createImageData(data.width, data.height);
+    imageData.data.set(data.data);
+    createImageBitmap(imageData).then(bitmap => {
+        cb(bitmap);
+    });
+}
+
+export function getAbsoluteURL(url) {
+    if (url && url.indexOf('http://') === 0 || url.indexOf('https://') === 0) {
+        return url;
+    }
+    let a = document.createElement('a');
+    a.href = url;
+    url = a.href;
+    a = null;
+    return url;
+}

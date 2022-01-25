@@ -1,8 +1,7 @@
-import { now, sign } from '../../core/util';
+import { now } from '../../core/util';
 import { preventDefault, getEventContainerPoint } from '../../core/util/dom';
 import Handler from '../../handler/Handler';
 import DragHandler from '../../handler/Drag';
-import Point from '../../geo/Point';
 import Map from '../Map';
 
 class MapDragHandler extends Handler {
@@ -99,6 +98,7 @@ class MapDragHandler extends Handler {
         this.preY = param['mousePos'].y;
         this.startX = this.preX;
         this.startY = this.preY;
+        this._startPrjCenter = this.target._getPrjCenter().copy();
     }
 
     _moveStart(param) {
@@ -130,13 +130,17 @@ class MapDragHandler extends Handler {
             my = param['mousePos'].y;
         const dx = mx - this.startX;
         const dy = my - this.startY;
+        const currentCenter = map._getPrjCenter();
+        const dxy = currentCenter.sub(this._startPrjCenter);
 
         this._clear();
 
         if (map.options['panAnimation'] && !param.interupted && map._verifyExtent(map._getPrjCenter()) && t < 280 && Math.abs(dy) + Math.abs(dx) > 5) {
             t = 5 * t;
             const dscale = isTouch ? 5 : 2.8;
-            map.panBy(new Point(dx * dscale, dy * dscale), { 'duration': isTouch ? t * 3 : t * 2, 'easing': 'outExpo' });
+            const targetPrjCoord = currentCenter.add(dxy._multi(dscale));
+            const targetCoord = map.getProjection().unproject(targetPrjCoord);
+            map.panTo(targetCoord, { 'duration': isTouch ? t * 3 : t * 2, 'easing': 'outExpo' });
         } else {
             map.onMoveEnd(param);
         }
