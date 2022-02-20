@@ -482,7 +482,10 @@ class CanvasRenderer extends Class {
         if (!this.context) {
             return;
         }
-        Canvas2D.clearRect(this.context, 0, 0, this.canvas.width, this.canvas.height);
+        const r = this.getMap().getDevicePixelRatio();
+        const scale = 1 / r;
+        const w = this.canvas.width * scale, h = this.canvas.height * scale;
+        Canvas2D.clearRect(this.context, 0, 0, Math.max(w, this.canvas.width), Math.max(h, this.canvas.height));
     }
 
     /**

@@ -68,6 +68,9 @@ class MapCanvasRenderer extends MapRenderer {
         this._fireLayerLoadEvents();
         this.executeFrameCallbacks();
         this._canvasUpdated = false;
+        if (Browser.checkDevicePixelRatio) {
+            Browser.checkDevicePixelRatio();
+        }
         return true;
     }
 
@@ -769,19 +772,19 @@ class MapCanvasRenderer extends MapRenderer {
             mapSize = map.getSize(),
             canvas = this.canvas,
             r = map.getDevicePixelRatio();
+        const styleW = mapSize['width'] + 'px', styleH = mapSize['height'] + 'px';
+        if (canvas.style && (canvas.style.width !== styleW || canvas.style.height !== styleH)) {
+            canvas.style.width = styleW;
+            canvas.style.height = styleH;
+        }
         if (mapSize['width'] * r === canvas.width && mapSize['height'] * r === canvas.height) {
             return false;
         }
         //retina屏支持
-
         canvas.height = r * mapSize['height'];
         canvas.width = r * mapSize['width'];
         this.topLayer.width = canvas.width;
         this.topLayer.height = canvas.height;
-        if (canvas.style) {
-            canvas.style.width = mapSize['width'] + 'px';
-            canvas.style.height = mapSize['height'] + 'px';
-        }
 
         return true;
     }
