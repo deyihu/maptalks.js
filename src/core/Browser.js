@@ -2,31 +2,9 @@ import { isFunction } from './util/common';
 import { IS_NODE } from './util/env';
 
 let Browser = {};
-let requestAnimFrame;
 
 function getDevicePixelRatio() {
     return (window.devicePixelRatio || (window.screen.deviceXDPI / window.screen.logicalXDPI));
-}
-
-function getRequestAnimationFrame() {
-    if (typeof window !== 'undefined') {
-        return window.requestAnimationFrame ||
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame ||
-            window.oRequestAnimationFrame ||
-            window.msRequestAnimationFrame ||
-            function (callback) {
-                window.setTimeout(callback, 1000 / 60);
-            };
-    }
-    return null;
-}
-
-function loop() {
-    if (Browser.checkDevicePixelRatio) {
-        Browser.checkDevicePixelRatio();
-    }
-    requestAnimFrame(loop);
 }
 
 if (!IS_NODE) {
@@ -86,7 +64,6 @@ if (!IS_NODE) {
     } catch (err) {
         decodeImageInWorker = false;
     }
-    requestAnimFrame = getRequestAnimationFrame();
 
     Browser = {
         ie: ie,
@@ -134,22 +111,22 @@ if (!IS_NODE) {
             if (typeof window !== 'undefined' && Browser.monitorDPRChange) {
                 const devicePixelRatio = getDevicePixelRatio();
                 const changed = devicePixelRatio !== Browser.devicePixelRatio;
-                Browser.devicePixelRatio = devicePixelRatio;
+                if (changed) {
+                    Browser.devicePixelRatio = devicePixelRatio;
+                }
                 return changed;
             }
             return false;
         }
     };
-    // if (typeof window !== 'undefined' && window.matchMedia) {
-    //     const mqString = `(resolution: ${window.devicePixelRatio}dppx)`;
-    //     window.matchMedia(mqString).addListener(() => {
-    //         Browser.devicePixelRatio = getDevicePixelRatio();
-    //     });
-    // }
-}
+    //monitor devicePixelRatio change
+    if (typeof window !== 'undefined' && window.matchMedia) {
+        for (let i = 1; i < 500; i++) {
+            const dpi = (i * 0.01).toFixed(2);
+            window.matchMedia(`screen and (resolution: ${dpi}dppx)`)
+                .addEventListener('change', Browser.checkDevicePixelRatio);
+        }
 
-if (requestAnimFrame) {
-    requestAnimFrame(loop);
+    }
 }
-
 export default Browser;
