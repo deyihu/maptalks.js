@@ -64,6 +64,20 @@ if (!IS_NODE) {
     } catch (err) {
         decodeImageInWorker = false;
     }
+    // https://github.com/Modernizr/Modernizr/issues/1894
+    /* Add feature test for passive event listener support */
+    let supportsPassive = false;
+    try {
+        window.addEventListener('testPassive', () => {
+        }, {
+            get passive() {
+                supportsPassive = true;
+            }
+        });
+    /*eslint-disable no-empty */
+    } catch (e) {
+    }
+    /*eslint-enable no-empty */
 
     Browser = {
         ie: ie,
@@ -117,7 +131,8 @@ if (!IS_NODE) {
                 return changed;
             }
             return false;
-        }
+        },
+        supportsPassive
     };
     //monitor devicePixelRatio change
     if (typeof window !== 'undefined' && window.matchMedia) {
