@@ -1,6 +1,6 @@
 {
   "name": "deyihu-maptalks",
-  "version": "1.0.0-beta.10.13",
+  "version": "1.0.0-beta.10.14",
   "description": "A light JavaScript library to create integrated 2D/3D maps.",
   "license": "BSD-3-Clause",
   "author": "Fu Zhen",
@@ -21,7 +21,7 @@
   },
   "homepage": "https://maptalks.org",
   "scripts": {
-    "build": "npm run build-styles && npm run build-dev && gulp minify",
+    "build": "npm run build-styles && npm run build-dev",
     "build-dev": "rollup -c && gulp transform-proto",
     "build-test": "rollup -c --environment BUILD:test && gulp transform-proto",
     "build-styles": "gulp styles",
