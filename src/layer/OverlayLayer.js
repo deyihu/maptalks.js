@@ -5,6 +5,7 @@ import { Geometry } from '../geometry';
 import { createFilter, getFilterFeature, compileStyle } from '@maptalks/feature-filter';
 import Layer from './Layer';
 import GeoJSON from '../geometry/GeoJSON';
+import { uuid } from '../core/uuid';
 
 /**
  * @property {Boolean}  [options.drawImmediate=false] - (Only for layer rendered with [CanvasRenderer]{@link renderer.CanvasRenderer}) <br>
@@ -30,6 +31,7 @@ const options = {
 class OverlayLayer extends Layer {
 
     constructor(id, geometries, options) {
+        id = id || uuid();
         if (geometries && (!(geometries instanceof Geometry) && !Array.isArray(geometries) && GEOJSON_TYPES.indexOf(geometries.type) < 0)) {
             options = geometries;
             geometries = null;
@@ -662,6 +664,71 @@ class OverlayLayer extends Layer {
         if (this._getRenderer()) {
             this._getRenderer().onGeometryPropertiesChange(param);
         }
+    }
+
+    getOverlay(id) {
+        return super.getGeometryById(id);
+    }
+
+    getOverlays(ids = []) {
+        if (!Array.isArray(ids)) {
+            ids = [ids];
+        }
+        if (Array.isArray(ids) && ids.length) {
+            const overlays = [];
+            ids.forEach(id => {
+                const o = this.getOverlay(id);
+                if (o) {
+                    overlays.push(o);
+                }
+            });
+            return overlays;
+        } else {
+            return super.getGeometries();
+        }
+    }
+
+    // getOverlayId(overlay) {
+    //     return overlay.id||overlay._id;
+    // }
+
+    addOverlay(overlay) {
+        if (Array.isArray(overlay)) {
+            return this.addOverlays(overlay);
+        }
+        return this.addGeometry(overlay);
+    }
+
+    removeOverlay(overlay) {
+        if (Array.isArray(overlay)) {
+            return this.removeOverlays(overlay);
+        }
+        this.removeGeometry(overlay);
+        return this;
+    }
+
+    addOverlays(overlays) {
+        if (!overlays) return this;
+        if (!Array.isArray(overlays)) {
+            return this.addOverlay(overlays);
+        }
+
+        for (let i = 0, len = overlays.length; i < len; i++) {
+            this.addOverlay(overlays[i]);
+        }
+        return this;
+    }
+
+    removeOverlays(overlays) {
+        if (!overlays) return this;
+        if (!Array.isArray(overlays)) {
+            return this.removeOverlay(overlays);
+        }
+
+        for (let i = 0, len = overlays.length; i < len; i++) {
+            this.removeOverlay(overlays[i]);
+        }
+        return this;
     }
 }
 
