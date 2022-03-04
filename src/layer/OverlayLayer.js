@@ -47,6 +47,9 @@ class OverlayLayer extends Layer {
         if (style) {
             this.setStyle(style);
         }
+        if (this._initType) {
+            this._initType();
+        }
     }
 
     /**
