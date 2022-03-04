@@ -667,7 +667,7 @@ class OverlayLayer extends Layer {
     }
 
     getOverlay(id) {
-        return super.getGeometryById(id);
+        return this.getGeometryById(id);
     }
 
     getOverlays(ids = []) {
@@ -684,7 +684,7 @@ class OverlayLayer extends Layer {
             });
             return overlays;
         } else {
-            return super.getGeometries();
+            return this.getGeometries();
         }
     }
 
