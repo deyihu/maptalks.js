@@ -72,7 +72,7 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         this._parentTiles = [];
         this._childTiles = [];
         this.tileCache = new LRUCache(layer.options['maxCacheSize'], this.deleteTile.bind(this));
-        if (Browser.decodeImageInWorker) {
+        if (Browser.decodeImageInWorker && this.layer.options['decodeImageInWorker']) {
             this._tileImageWorkerConn = new TileWorkerConnection();
         }
     }
@@ -420,6 +420,7 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
                     });
                 }
             }, this.layer.options['fetchOptions'] || {
+                referrer: document.location.href,
                 headers: { accept: 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' }
             });
         }
