@@ -98,8 +98,9 @@ Map.include(/** @lends Map.prototype */{
 
         const player = this._animPlayer = Animation.animate(props, {
             'easing': options['easing'] || 'out',
-            'duration': options['duration'] || this.options['zoomAnimationDuration']
-            // 'framer': framer
+            'duration': options['duration'] || this.options['zoomAnimationDuration'],
+            // 'framer' : framer,
+            'repeat': options['repeat']
         }, frame => {
             if (this.isRemoved()) {
                 player.finish();
