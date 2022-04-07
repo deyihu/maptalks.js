@@ -155,6 +155,7 @@ class InfoWindow extends UIComponent {
                 }
                 return dom;
             } else {
+                this._checkContentVisible(this.options['content']);
                 this._replaceTemplate(this.options['content']);
                 return this.options['content'];
             }
@@ -192,6 +193,7 @@ class InfoWindow extends UIComponent {
         if (!isFunc) {
             this._replaceTemplate(msgContent);
         }
+        this._checkContentVisible(this.options['content']);
         return dom;
     }
 

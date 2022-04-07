@@ -521,6 +521,7 @@ class UIComponent extends Eventable(Class) {
             delete this._resizeObserver;
             delete this._domContentRect;
         }
+        this._checkContentVisible(this._content || this.options['content']);
     }
 
     /**
@@ -693,6 +694,14 @@ class UIComponent extends Eventable(Class) {
 
     isSupportZoomFilter() {
         return false;
+    }
+
+    _checkContentVisible(dom) {
+        if (dom && dom.style && dom.style.display === 'none') {
+            const display = dom.style.display;
+            dom.style.display = display === 'node' ? 'block' : 'none';
+        }
+        return this;
     }
 
     /*

@@ -355,6 +355,7 @@ class UIMarker extends Handlerable(UIComponent) {
             dom.className = this.options['containerClass'];
         }
         this._registerDOMEvents(dom);
+        this._checkContentVisible(content);
         return dom;
     }
 
