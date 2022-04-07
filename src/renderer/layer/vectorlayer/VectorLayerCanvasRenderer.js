@@ -26,7 +26,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         if (!this.layer.options['geometryEvents'] || (!this._lastRenderTime) || (now() - this._lastRenderTime) < 32) {
             return null;
         }
-        if (!this._imageData) {
+        if (!this._imageData && this.context && this.context.canvas) {
             const { width, height } = this.context.canvas;
             try {
                 this._imageData = this.context.getImageData(0, 0, width, height);
