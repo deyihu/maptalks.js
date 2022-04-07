@@ -1,3 +1,4 @@
+import { isFunction } from '../core/util';
 import { createEl } from '../core/util/dom';
 import UIComponent from './UIComponent';
 
@@ -97,7 +98,13 @@ class ToolTip extends UIComponent {
         if (!cssName && options.height) {
             dom.style.lineHeight = options.height + 'px';
         }
-        dom.innerHTML = `<div class="${cssName}">${this._content}</div>`;
+        if (isFunction(this._content)) {
+            //dymatic render dom content
+            this._content.bind(this)(dom);
+        } else {
+            dom.innerHTML = `<div class="${cssName}">${this._content}</div>`;
+        }
+        this._checkContentVisible(this._content);
         return dom;
     }
 

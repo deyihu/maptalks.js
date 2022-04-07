@@ -1,4 +1,4 @@
-import { isNumber, isObject, isString } from '../core/util';
+import { isFunction, isNumber, isObject, isString } from '../core/util';
 import { createEl, addDomEvent, removeDomEvent } from '../core/util/dom';
 import Point from '../geo/Point';
 import Size from '../geo/Size';
@@ -141,13 +141,21 @@ class InfoWindow extends UIComponent {
     }
 
     buildOn() {
+        const isFunc = isFunction(this.options['content']);
+        const isStr = isString(this.options['content']);
         if (this.options['custom']) {
-            if (isString(this.options['content'])) {
+            if (isStr || isFunc) {
                 const dom = createEl('div');
-                dom.innerHTML = this.options['content'];
-                this._replaceTemplate(dom);
+                if (isStr) {
+                    dom.innerHTML = this.options['content'];
+                    this._replaceTemplate(dom);
+                } else {
+                    //dymatic render dom content
+                    this.options['content'].bind(this)(dom);
+                }
                 return dom;
             } else {
+                this._checkContentVisible(this.options['content']);
                 this._replaceTemplate(this.options['content']);
                 return this.options['content'];
             }
@@ -168,8 +176,13 @@ class InfoWindow extends UIComponent {
         //reslove title
         this._replaceTemplate(dom);
         const msgContent = dom.querySelector('.maptalks-msgContent');
-        if (isString(this.options['content'])) {
-            msgContent.innerHTML = this.options['content'];
+        if (isStr || isFunc) {
+            if (isStr) {
+                msgContent.innerHTML = this.options['content'];
+            } else {
+                //dymatic render dom content
+                this.options['content'].bind(this)(msgContent);
+            }
         } else {
             msgContent.appendChild(this.options['content']);
         }
@@ -177,7 +190,10 @@ class InfoWindow extends UIComponent {
         const closeBtn = dom.querySelector('.maptalks-close');
         addDomEvent(closeBtn, 'click touchend', this._onCloseBtnClick);
         //reslove content
-        this._replaceTemplate(msgContent);
+        if (!isFunc) {
+            this._replaceTemplate(msgContent);
+        }
+        this._checkContentVisible(this.options['content']);
         return dom;
     }
 
