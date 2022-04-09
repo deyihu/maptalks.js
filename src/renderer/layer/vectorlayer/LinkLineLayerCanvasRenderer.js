@@ -68,10 +68,12 @@ class LinkLineLayerCanvasRenderer extends OverlayLayerRenderer {
         ctx.lineWidth = lineWidth || 1;
         if (shadowBlur) {
             ctx.shadowBlur = shadowBlur;
+            ctx.shadowColor = shadowColor || '#fff';
         } else {
-            ctx.shadowBlur = 0;
+            delete ctx.shadowBlur;
+            delete ctx.shadowColor;
         }
-        ctx.shadowColor = shadowColor;
+        // ctx.shadowColor = shadowColor;
         ctx.beginPath();
         ctx.moveTo(pixel.x + offsetX, pixel.y + offsetY);
         if (Array.isArray(vertexs)) {
