@@ -2412,12 +2412,13 @@ Map.include(/** @lends Map.prototype */{
      */
     distanceToPointAtRes: function () {
         const POINT = new Point(0, 0);
+        const DEFAULT_CENTER = new Coordinate(0, 0);
         return function (xDist, yDist, res, paramCenter) {
             const projection = this.getProjection();
             if (!projection) {
                 return null;
             }
-            const center = paramCenter || this.getCenter(),
+            const center = DEFAULT_CENTER || paramCenter || this.getCenter(),
                 target = projection.locate(center, xDist, yDist);
             const p0 = this.coordToPointAtRes(center, res, POINT),
                 p1 = this.coordToPointAtRes(target, res);
