@@ -29,7 +29,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         if (!this.context || !this.context.canvas) {
             return null;
         }
-        if (!this._imageData && this.context && this.context.canvas) {
+        if (!this._imageData) {
             const { width, height } = this.context.canvas;
             try {
                 this._imageData = this.context.getImageData(0, 0, width, height);

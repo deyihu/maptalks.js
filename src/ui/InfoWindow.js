@@ -193,7 +193,6 @@ class InfoWindow extends UIComponent {
         if (!isFunc) {
             this._replaceTemplate(msgContent);
         }
-        this._checkContentVisible(this.options['content']);
         return dom;
     }
 
