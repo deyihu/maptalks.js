@@ -2412,14 +2412,32 @@ Map.include(/** @lends Map.prototype */{
      */
     distanceToPointAtRes: function () {
         const POINT = new Point(0, 0);
-        const DEFAULT_CENTER = new Coordinate(0, 0);
+        // const DEFAULT_CENTER = new Coordinate(0, 0);
         return function (xDist, yDist, res, paramCenter) {
             const projection = this.getProjection();
             if (!projection) {
                 return null;
             }
-            const center = DEFAULT_CENTER || paramCenter || this.getCenter(),
+            const center = paramCenter || this.getCenter(),
                 target = projection.locate(center, xDist, yDist);
+            const p0 = this.coordToPointAtRes(center, res, POINT),
+                p1 = this.coordToPointAtRes(target, res);
+            p1._sub(p0)._abs();
+            return p1;
+        };
+    }(),
+
+    heightToPoint: function () {
+        const POINT = new Point(0, 0);
+        const DEFAULT_CENTER = new Coordinate(0, 0);
+        return function (height = 0, res) {
+            const projection = this.getProjection();
+            if (!projection) {
+                return null;
+            }
+            res = res || this.getGLRes();
+            const center = DEFAULT_CENTER,
+                target = projection.locate(center, height, height);
             const p0 = this.coordToPointAtRes(center, res, POINT),
                 p1 = this.coordToPointAtRes(target, res);
             p1._sub(p0)._abs();
