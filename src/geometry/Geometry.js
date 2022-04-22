@@ -434,11 +434,11 @@ class Geometry extends JSONAble(Eventable(Handlerable(Class))) {
         // const center = this.getCenter();
         const glRes = map.getGLRes();
         const minAltitude = this.getMinAltitude();
-        const altitude = map.heightToPoint(minAltitude, glRes).x * sign(minAltitude);
+        const altitude = map.altitudeToPoint(minAltitude, glRes).x * sign(minAltitude);
         const extent = extent2d.convertTo(c => map._pointAtResToContainerPoint(c, glRes, altitude, TEMP_POINT0), out);
         let maxAltitude = this.getMaxAltitude();
         if (maxAltitude !== minAltitude) {
-            maxAltitude = map.heightToPoint(maxAltitude, glRes).x * sign(maxAltitude);
+            maxAltitude = map.altitudeToPoint(maxAltitude, glRes).x * sign(maxAltitude);
             const extent2 = extent2d.convertTo(c => map._pointAtResToContainerPoint(c, glRes, maxAltitude, TEMP_POINT0), TEMP_EXTENT);
             extent._combine(extent2);
         }
