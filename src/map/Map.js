@@ -68,6 +68,7 @@ const TEMP_COORD = new Coordinate(0, 0);
  * @property {Boolean} [options.doubleClickZoom=true]                    - whether to allow map to zoom by double click events.
  * @property {Boolean} [options.scrollWheelZoom=true]                   - whether to allow map to zoom by scroll wheel events.
  * @property {Boolean} [options.geometryEvents=true]                    - enable/disable firing geometry events
+ * @property {Number}  [options.clickTimeThreshold=280]                 - time threshold between mousedown(touchstart) and mouseup(touchend) to determine if it's a click event
  *
  * @property {Boolean}        [options.control=true]                    - whether allow map to add controls.
  * @property {Boolean|Object} [options.attribution=true]                - whether to display the attribution control on the map. if true, attribution display maptalks info; if object, you can specify positon or your base content, and both;
@@ -131,7 +132,9 @@ const options = {
     'renderer': 'canvas',
 
     'cascadePitches': [10, 60],
-    'renderable': true
+    'renderable': true,
+
+    'clickTimeThreshold': 280,
 };
 
 /**
@@ -2438,25 +2441,15 @@ Map.include(/** @lends Map.prototype */{
      * @function
      */
     altitudeToPoint: function () {
-        const POINT = new Point(0, 0);
         const DEFAULT_CENTER = new Coordinate(0, 0);
-        return function (altitude = 0, res) {
-            const projection = this.getProjection();
-            if (!projection) {
-                return null;
-            }
-            res = res || this.getGLRes();
-            const center = DEFAULT_CENTER,
-                target = projection.locate(center, altitude, altitude);
-            const p0 = this.coordToPointAtRes(center, res, POINT),
-                p1 = this.coordToPointAtRes(target, res);
-            p1._sub(p0)._abs();
+        return function (altitude = 0, res, paramCenter) {
+            const p = this.distanceToPointAtRes(altitude, altitude, res, paramCenter || DEFAULT_CENTER);
             const heightFactor = this.options['heightFactor'];
             if (heightFactor && heightFactor !== 1) {
-                p1.x *= heightFactor;
-                p1.y *= heightFactor;
+                p.x *= heightFactor;
+                p.y *= heightFactor;
             }
-            return p1;
+            return p;
         };
     }(),
 
