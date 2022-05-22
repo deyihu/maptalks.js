@@ -307,7 +307,9 @@ class CanvasRenderer extends Class {
      * @return {Boolean}
      */
     hitDetect(point) {
-        if (!this.context || (this.layer.isEmpty && this.layer.isEmpty()) || this.isBlank() || this._errorThrown || (this.layer.isVisible && !this.layer.isVisible())) {
+        const layer = this.layer;
+        if (!this.context || (layer.isEmpty && layer.isEmpty()) || this.isBlank() ||
+            this._errorThrown || (layer.isVisible && !layer.isVisible()) || (layer._isShareCanvas && layer._isShareCanvas())) {
             return false;
         }
         const map = this.getMap();
@@ -411,7 +413,12 @@ class CanvasRenderer extends Class {
             }
             this.canvas = this.layer._canvas;
         } else {
-            this.canvas = Canvas2D.createCanvas(w, h, map.CanvasClass);
+            const layer = this.layer;
+            if (layer && layer._isShareCanvas && layer._isShareCanvas()) {
+                this.canvas = Canvas2D.createShareCanvas(map.id, w, h, map.CanvasClass);
+            } else {
+                this.canvas = Canvas2D.createCanvas(w, h, map.CanvasClass);
+            }
         }
 
         this.onCanvasCreate();

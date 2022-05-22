@@ -23,7 +23,7 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
 
     getImageData() {
         //如果不开启geometry event 或者 渲染频率很高 不要取缓存了，因为getImageData是个很昂贵的操作
-        if (!this.layer.options['geometryEvents'] || (!this._lastRenderTime) || (now() - this._lastRenderTime) < 32) {
+        if (!this.layer.options['geometryEvents'] || (!this._lastRenderTime) || (now() - this._lastRenderTime) < 32 || (this.layer._isShareCanvas())) {
             return null;
         }
         if (!this.context || !this.context.canvas) {
@@ -69,6 +69,10 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
     needToRedraw() {
         const map = this.getMap();
         if (map.isInteracting() && this.layer.options['enableAltitude']) {
+            return true;
+        }
+        const layer = this.layer;
+        if (layer && layer._isShareCanvas()) {
             return true;
         }
         // don't redraw when map is zooming without pitch and layer doesn't have any point symbolizer.

@@ -46,9 +46,20 @@ class MapCanvasRenderer extends MapRenderer {
         map._fireEvent('framestart');
         this.updateMapDOM();
         map.clearCollisionIndex();
-        const layers = this._getAllLayerToRender();
-        this.drawLayers(layers, framestamp);
-        const updated = this.drawLayerCanvas(layers);
+        const allLayers = this._getAllLayerToRender();
+        let updated = false;
+        for (let i = 0, len = allLayers.length; i <= len; i++) {
+            const layer = allLayers[i];
+            const layers = [];
+            if (layer) {
+                layers.push(layer);
+            }
+            this.drawLayers(layers, framestamp);
+            const update = this.drawLayerCanvas(layers, i === 0, i === len - 1 || len === 0);
+            if (update) {
+                updated = update;
+            }
+        }
         if (updated) {
             // when updated is false, should escape drawing tops and centerCross to keep handle's alpha
             this.drawTops();
@@ -301,7 +312,7 @@ class MapCanvasRenderer extends MapRenderer {
     /**
      * Renders the layers
      */
-    drawLayerCanvas(layers) {
+    drawLayerCanvas(layers, starting, ending) {
         const map = this.map;
         if (!map) {
             return false;
@@ -321,12 +332,14 @@ class MapCanvasRenderer extends MapRenderer {
          * @property {Map} target            - the map fires event
          * @property {CanvasRenderingContext2D} context  - canvas context
          */
-        map._fireEvent('renderstart', {
-            'context': this.context
-        });
+        if (starting) {
+            map._fireEvent('renderstart', {
+                'context': this.context
+            });
 
-        if (!this._updateCanvasSize()) {
-            this.clearCanvas();
+            if (!this._updateCanvasSize()) {
+                this.clearCanvas();
+            }
         }
 
         const interacting = map.isInteracting(),
@@ -374,9 +387,11 @@ class MapCanvasRenderer extends MapRenderer {
          * @property {Map} target              - the map fires event
          * @property {CanvasRenderingContext2D} context - canvas context
          */
-        map._fireEvent('renderend', {
-            'context': this.context
-        });
+        if (ending) {
+            map._fireEvent('renderend', {
+                'context': this.context
+            });
+        }
         return true;
     }
 

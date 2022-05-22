@@ -24,10 +24,24 @@ let TEMP_CANVAS = null;
 
 const RADIAN = Math.PI / 180;
 const textOffsetY = 1;
+const SHARECANVASMAP = {};
 
 const Canvas = {
     setHitTesting(testing) {
         hitTesting = testing;
+    },
+
+    removeShareCanvas(mapId) {
+        delete SHARECANVASMAP[mapId];
+    },
+
+    createShareCanvas(mapId, width, height, canvasClass) {
+        if (SHARECANVASMAP[mapId]) {
+            return SHARECANVASMAP[mapId];
+        }
+        const canvas = SHARECANVASMAP[mapId] = new Canvas.createCanvas(width, height, canvasClass);
+        canvas._mapId = mapId;
+        return canvas;
     },
 
     createCanvas(width, height, canvasClass) {
