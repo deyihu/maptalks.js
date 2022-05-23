@@ -75,6 +75,7 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         if (Browser.decodeImageInWorker && this.layer.options['decodeImageInWorker']) {
             this._tileImageWorkerConn = new TileWorkerConnection();
         }
+        this._compareTiles = compareTiles.bind(this);
     }
 
     getCurrentTileZoom() {
@@ -230,44 +231,19 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         const context = { tiles, parentTiles: this._parentTiles, childTiles: this._childTiles };
         this.onDrawTileStart(context);
 
-        this._parentTiles.forEach(t => this._drawTileAndCache(t));
         this._childTiles.forEach(t => this._drawTile(t.info, t.image));
+        this._parentTiles.forEach(t => this._drawTile(t.info, t.image));
+
+        tiles.sort(this._compareTiles);
+        for (let i = 0, l = tiles.length; i < l; i++) {
+            this._drawTileAndCache(tiles[i]);
+        }
 
         placeholders.forEach(t => this._drawTile(t.info, t.image));
-
-        const layer = this.layer,
-            map = this.getMap();
-        if (!layer.options['cascadeTiles'] || map.getPitch() <= map.options['cascadePitches'][0]) {
-            tiles.forEach(t => this._drawTileAndCache(t));
-        } else {
-            //write current tiles and update stencil buffer to clip parent|child tiles with current tiles
-            this.writeZoomStencil();
-            let started = false;
-            for (let i = 0, l = tiles.length; i < l; i++) {
-                if (tiles[i].info.z !== this._tileZoom) {
-                    if (!started) {
-                        this.startZoomStencilTest();
-                        started = true;
-                    } else {
-                        this.resumeZoomStencilTest();
-                    }
-                } else if (started) {
-                    this.pauseZoomStencilTest();
-                }
-                this._drawTileAndCache(tiles[i]);
-            }
-            this.endZoomStencilTest();
-        }
 
         this.onDrawTileEnd(context);
 
     }
-
-    writeZoomStencil() { }
-    startZoomStencilTest() { }
-    endZoomStencilTest() { }
-    pauseZoomStencilTest() { }
-    resumeZoomStencilTest() { }
 
     onDrawTileStart() { }
     onDrawTileEnd() { }
@@ -593,7 +569,7 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
             max = info.extent2d.getMax(),
             pmin = layer._project(map._pointToPrjAtRes(min, res, TEMP_POINT1), TEMP_POINT1),
             pmax = layer._project(map._pointToPrjAtRes(max, res, TEMP_POINT2), TEMP_POINT2);
-        const zoomDiff = 2;
+        const zoomDiff = 3;
         for (let i = 1; i < zoomDiff; i++) {
             this._findChildTilesAt(children, pmin, pmax, layer, info.z + i);
         }
@@ -800,3 +776,7 @@ function defaultPlaceholder(canvas) {
 }
 
 export default TileLayerCanvasRenderer;
+
+function compareTiles(a, b) {
+    return Math.abs(this._tileZoom - a.info.z) - Math.abs(this._tileZoom - b.info.z);
+}
