@@ -24,6 +24,7 @@ import Layer from '../layer/Layer';
 import Renderable from '../renderer/Renderable';
 import SpatialReference from './spatial-reference/SpatialReference';
 import { computeDomPosition } from '../core/util/dom';
+import Canvas from '../core/Canvas';
 
 const TEMP_COORD = new Coordinate(0, 0);
 /**
@@ -1483,6 +1484,7 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
         if (Browser.removeDPRListening) {
             Browser.removeDPRListening(this);
         }
+        Canvas.removeShareCanvas(this.id);
         return this;
     }
 

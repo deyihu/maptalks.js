@@ -224,6 +224,10 @@ class VectorLayer extends OverlayLayer {
         return profile;
     }
 
+    _isShareCanvas() {
+        return this.options['shareCanvas'];
+    }
+
     /**
      * Reproduce a VectorLayer from layer's JSON.
      * @param  {Object} layerJSON - layer's JSON
