@@ -321,6 +321,17 @@ class MapCanvasRenderer extends MapRenderer {
             if (!this._updateCanvasSize()) {
                 this.clearCanvas();
             }
+            /**
+             * renderstart event, an event fired when map starts to render.
+             * @event Map#renderstart
+             * @type {Object}
+             * @property {String} type           - renderstart
+             * @property {Map} target            - the map fires event
+             * @property {CanvasRenderingContext2D} context  - canvas context
+             */
+            map._fireEvent('renderstart', {
+                'context': this.context
+            });
         }
         if (!this.isLayerCanvasUpdated() && !this.isViewChanged()) {
             if (ending) {
@@ -334,19 +345,6 @@ class MapCanvasRenderer extends MapRenderer {
             this.createCanvas();
         }
 
-        /**
-         * renderstart event, an event fired when map starts to render.
-         * @event Map#renderstart
-         * @type {Object}
-         * @property {String} type           - renderstart
-         * @property {Map} target            - the map fires event
-         * @property {CanvasRenderingContext2D} context  - canvas context
-         */
-        if (starting) {
-            map._fireEvent('renderstart', {
-                'context': this.context
-            });
-        }
 
         const interacting = map.isInteracting(),
             limit = map.options['layerCanvasLimitOnInteracting'];
