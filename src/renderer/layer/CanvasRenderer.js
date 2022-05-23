@@ -510,8 +510,10 @@ class CanvasRenderer extends Class {
         if (!this.canvas) {
             this.createCanvas();
             this.createContext();
-            if (this._isShareCanvas())
-                this.layer.onCanvasCreate();
+            if (this._isShareCanvas()) {
+                this.clearCanvas();
+            }
+            this.layer.onCanvasCreate();
             /**
              * canvascreate event, fired when canvas created.
              *
