@@ -53,6 +53,7 @@ const options = {
     'interactive': true,
     'editable': true,
     'cursor': null,
+    'antiMeridian': false,
     'defaultProjection': 'EPSG:4326' // BAIDU, IDENTITY
 };
 
