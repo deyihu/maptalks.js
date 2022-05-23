@@ -317,6 +317,11 @@ class MapCanvasRenderer extends MapRenderer {
         if (!map) {
             return false;
         }
+        if (starting) {
+            if (!this._updateCanvasSize()) {
+                this.clearCanvas();
+            }
+        }
         if (!this.isLayerCanvasUpdated() && !this.isViewChanged()) {
             return false;
         }
@@ -336,10 +341,6 @@ class MapCanvasRenderer extends MapRenderer {
             map._fireEvent('renderstart', {
                 'context': this.context
             });
-
-            if (!this._updateCanvasSize()) {
-                this.clearCanvas();
-            }
         }
 
         const interacting = map.isInteracting(),
