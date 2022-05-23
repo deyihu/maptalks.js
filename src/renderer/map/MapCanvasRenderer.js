@@ -323,6 +323,11 @@ class MapCanvasRenderer extends MapRenderer {
             }
         }
         if (!this.isLayerCanvasUpdated() && !this.isViewChanged()) {
+            if (ending) {
+                map._fireEvent('renderend', {
+                    'context': this.context
+                });
+            }
             return false;
         }
         if (!this.canvas) {
