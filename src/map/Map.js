@@ -83,7 +83,7 @@ const TEMP_COORD = new Coordinate(0, 0);
  * @property {String} [options.renderer=canvas]                 - renderer type. Don't change it if you are not sure about it. About renderer, see [TODO]{@link tutorial.renderer}.
  * @property {Number} [options.devicePixelRatio=null]           - device pixel ratio to override device's default one
  * @property {Number} [options.heightFactor=1]           - the factor for height/altitude calculation,This affects the height calculation of all layers(vectortilelayer/gllayer/threelayer/3dtilelayer)
- * @property {Boolean} [options.cameraInfiniteFar=false]           - Camera Infinity Far.Be careful, the map performance will decrease after opening
+ * @property {Boolean} [options.cameraInfiniteFar=false]           - Increase camera far plane to infinite. Enable this option may reduce map's performance.
  * @memberOf Map
  * @instance
  */
@@ -2461,6 +2461,14 @@ Map.include(/** @lends Map.prototype */{
         };
     }(),
 
+    pointAtResToAltitude: function () {
+        const DEFAULT_CENTER = new Coordinate(0, 40);
+        return function (point = 0, res, originCenter) {
+            const altitude = this.pointAtResToDistance(point, 0, res, originCenter || DEFAULT_CENTER);
+            return altitude;
+        };
+    }(),
+
 
     /**
      * Converts pixel size to geographical distance.
@@ -2511,16 +2519,20 @@ Map.include(/** @lends Map.prototype */{
      */
     pointAtResToDistance: function () {
         const POINT = new Point(0, 0);
-        const COORD = new Coordinate(0, 0);
-        return function (dx, dy, res) {
+        const PRJ_COORD = new Coordinate(0, 0);
+        const COORD0 = new Coordinate(0, 0);
+        const COORD1 = new Coordinate(0, 0);
+        return function (dx, dy, res, paramCenter) {
             const projection = this.getProjection();
             if (!projection) {
                 return null;
             }
-            const c = this._prjToPointAtRes(this._getPrjCenter(), res, POINT);
+            const prjCoord = paramCenter ?  projection.project(paramCenter, PRJ_COORD) : this._getPrjCenter();
+            const c = this._prjToPointAtRes(prjCoord, res, POINT);
             c._add(dx, dy);
-            const target = this.pointAtResToCoord(c, res, COORD);
-            return projection.measureLength(this.getCenter(), target);
+            const target = this.pointAtResToCoord(c, res, COORD0);
+            const src = paramCenter ? paramCenter : projection.unproject(prjCoord, COORD1);
+            return projection.measureLength(src, target);
         };
     }(),
 
