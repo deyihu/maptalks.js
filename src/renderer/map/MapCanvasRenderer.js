@@ -37,16 +37,16 @@ class MapCanvasRenderer extends MapRenderer {
      * @return {Boolean} return false to cease frame loop
      */
     renderFrame(framestamp) {
-        if (!this.map || !this.map.options['renderable']) {
+        const map = this.map;
+        if (!map || !map.options['renderable']) {
             return false;
         }
         //not render anything when map container is hide
-        if (this._containerIsHide()) {
+        if (map.options['stopRenderOnOffscreen'] && this._containerIsOffscreen()) {
             return true;
         }
         this._updateDomPosition(framestamp);
         delete this._isViewChanged;
-        const map = this.map;
         map._fireEvent('framestart');
         this.updateMapDOM();
         map.clearCollisionIndex();
@@ -989,19 +989,15 @@ class MapCanvasRenderer extends MapRenderer {
         this.map.fire('drawtopsend');
     }
 
-    //map container is Hide
-    _containerIsHide() {
-        const map = this.map;
-        if (!map) {
-            return true;
-        }
-        const container = map.getContainer();
+    _containerIsOffscreen() {
+        const container = this.map.getContainer();
         if (!container || !container.style || container.style.display === 'none') {
             return true;
         }
         const minSize = Math.min(container.clientWidth, container.clientHeight);
         return minSize <= 0;
     }
+
 }
 
 Map.registerRenderer('canvas', MapCanvasRenderer);
