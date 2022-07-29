@@ -72,7 +72,7 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         this._parentTiles = [];
         this._childTiles = [];
         this.tileCache = new LRUCache(layer.options['maxCacheSize'], this.deleteTile.bind(this));
-        if (Browser.decodeImageInWorker && this.layer.options['decodeImageInWorker']) {
+        if (Browser.decodeImageInWorker && this.layer.options['decodeImageInWorker'] && (layer.options['renderer'] === 'gl' || !Browser.safari)) {
             this._tileImageWorkerConn = new TileWorkerConnection();
         }
         this._compareTiles = compareTiles.bind(this);
@@ -169,8 +169,8 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
 
             const placeholder = this._generatePlaceHolder(tileGrid.zoom);
 
-            for (let i = 0, l = allTiles.length; i < l; i++) {
-                const tile = allTiles[i],
+            for (let j = 0, l = allTiles.length; j < l; j++) {
+                const tile = allTiles[j],
                     tileId = tile['id'];
                 //load tile in cache at first if it has.
                 let tileLoading = false;
