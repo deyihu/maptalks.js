@@ -559,8 +559,9 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
                 w += 0.1;
                 h += 0.1;
             }
-            if (zoom !== tileZoom) {
-                const scale = map._getResolution(tileZoom) / map._getResolution();
+            const res = map._getResolution();
+            if (res !== tileInfo.res) {
+                const scale = tileInfo.res / res;
                 ctx.scale(scale, scale);
             }
             x = y = 0;
@@ -575,7 +576,7 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
             ctx.font = '20px monospace';
             const point = new Point(x, y);
             Canvas2D.rectangle(ctx, point, { width: w, height: h }, 1, 0);
-            Canvas2D.fillText(ctx, this.getDebugInfo(tileId), point._add(10, 20), color);
+            Canvas2D.fillText(ctx, this.getDebugInfo(tileId), point._add(32, h - 14), color);
             Canvas2D.drawCross(ctx, x + w / 2, y + h / 2, 2, color);
             ctx.restore();
         }
@@ -601,8 +602,7 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         }
         const map = this.getMap();
         const children = [];
-        const sr = layer.getSpatialReference();
-        const res = sr.getResolution(info.z);
+        const res = info.res;
         const min = info.extent2d.getMin(),
             max = info.extent2d.getMax(),
             pmin = layer._project(map._pointToPrjAtRes(min, res, TEMP_POINT1), TEMP_POINT1),
@@ -649,7 +649,7 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         const d = sr.getZoomDirection(),
             zoomOffset = layer.options['zoomOffset'],
             zoomDiff = layer.options['backgroundZoomDiff'];
-        const res = sr.getResolution(info.z);
+        const res = info.res;
         const center = info.extent2d.getCenter(),
             prj = layer._project(map._pointToPrjAtRes(center, res));
         for (let diff = 1; diff <= zoomDiff; diff++) {

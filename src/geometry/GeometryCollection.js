@@ -342,6 +342,7 @@ class GeometryCollection extends Geometry {
         if (this.isEmpty()) {
             return false;
         }
+        delete this._pickGeometryIndex;
         const geometries = this.getGeometries();
         for (let i = 0, l = geometries.length; i < l; i++) {
             if (geometries[i]._containsPoint(point, t, isInMapView)) {
