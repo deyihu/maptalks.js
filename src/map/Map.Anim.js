@@ -2,7 +2,7 @@ import { Animation } from '../core/Animation';
 import Coordinate from '../geo/Coordinate';
 import Point from '../geo/Point';
 import Map from './Map';
-import { isNil, isFunction, hasOwn, extend, clamp } from '../core/util';
+import { isNil, isFunction, hasOwn, extend, clamp, isNumber, isArrayHasData } from '../core/util';
 
 // function equalView(view1, view2) {
 //     for (const p in view1) {
@@ -53,6 +53,45 @@ Map.include(/** @lends Map.prototype */{
         const projection = this.getProjection(),
             currView = this.getView(),
             props = {};
+        const targetView = extend({}, currView, view || {});
+        let isEqual = false;
+        function valueApproximate(v1, v2) {
+            return isNumber(v1) && isNumber(v2) && Math.abs(v1 - v2) < 0.000000001;
+        }
+        const keys = ['center', 'zoom', 'pitch', 'bearing'];
+        for (let i = 0, len = keys.length; i < len; i++) {
+            const key = keys[i];
+            const viewOpt = targetView[key];
+            if (viewOpt && viewOpt.toArray) {
+                targetView[key] = viewOpt.toArray();
+            }
+            isEqual = false;
+            const v1 = currView[key], v2 = targetView[key];
+            if (isNumber(v1) && isNumber(v2) && valueApproximate(v1, v2)) {
+                isEqual = true;
+            }
+            if (isArrayHasData(v1) && isArrayHasData(v2)) {
+                for (let i = 0, len = Math.max(v1.length, v2.length); i < len; i++) {
+                    const v11 = v1[i], v22 = v2[i];
+                    if (valueApproximate(v11, v22)) {
+                        isEqual = true;
+                    }
+                }
+            }
+            if (!isEqual) {
+                break;
+            }
+        }
+        for (const key in view) {
+            if (keys.indexOf(key) === -1) {
+                isEqual = false;
+                break;
+            }
+        }
+        if (isEqual) {
+            console.warn('animateTo:target view equals current map view. ignore animation');
+            return null;
+        }
         let empty = true;
         for (const p in view) {
             if (hasOwn(view, p) && !isNil(view[p]) && (p === 'prjCenter' || !isNil(currView[p]))) {
@@ -98,7 +137,7 @@ Map.include(/** @lends Map.prototype */{
         const player = this._animPlayer = Animation.animate(props, {
             'easing': options['easing'] || 'out',
             'duration': options['duration'] || this.options['zoomAnimationDuration'],
-            'framer' : framer,
+            'framer': framer,
             'repeat': options['repeat']
         }, frame => {
             if (this.isRemoved()) {
@@ -321,7 +360,7 @@ Map.include(/** @lends Map.prototype */{
         const player = this._animPlayer = Animation.animate({ k: [0, 1] }, {
             'easing': options['easing'] || 'out',
             'duration': options['duration'] || 8,
-            'framer' : framer
+            'framer': framer
         }, frame => {
             if (this.isRemoved()) {
                 player.finish();
