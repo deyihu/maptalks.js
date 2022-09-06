@@ -70,9 +70,10 @@ Map.include(/** @lends Map.prototype */{
             if (isNumber(v1) && isNumber(v2) && valueApproximate(v1, v2)) {
                 isEqual = true;
             }
-            if (isArrayHasData(v1) && isArrayHasData(v2)) {
-                for (let i = 0, len = Math.max(v1.length, v2.length); i < len; i++) {
+            if (key === 'center' && isArrayHasData(v1) && isArrayHasData(v2)) {
+                for (let i = 0, len = 2; i < len; i++) {
                     const v11 = v1[i], v22 = v2[i];
+                    isEqual = false;
                     if (valueApproximate(v11, v22)) {
                         isEqual = true;
                     }
