@@ -27,6 +27,9 @@ const textOffsetY = 1;
 const SHARECANVASMAP = {};
 
 const Canvas = {
+    getCanvas2DContext(canvas) {
+        return canvas.getContext('2d', { willReadFrequently: true });
+    },
     setHitTesting(testing) {
         hitTesting = testing;
     },
