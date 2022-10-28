@@ -127,6 +127,9 @@ class VectorLayer extends OverlayLayer {
         if (imageData) {
             let hitTolerance = 0;
             for (let i = geometries.length - 1; i >= 0; i--) {
+                if (!geometries[i]) {
+                    continue;
+                }
                 const t = geometries[i]._hitTestTolerance() + (tolerance || 0);
                 if (t > hitTolerance) {
                     hitTolerance = t;
