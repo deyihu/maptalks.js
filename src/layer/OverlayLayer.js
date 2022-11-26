@@ -735,7 +735,7 @@ class OverlayLayer extends Layer {
         }
         return this;
     }
-    
+
     _hasGeoListeners(eventTypes) {
         if (!eventTypes) {
             return false;
