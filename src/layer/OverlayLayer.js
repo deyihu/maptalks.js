@@ -20,6 +20,8 @@ const options = {
 };
 
 
+const TMP_EVENTS_ARR = [];
+
 /**
  * @classdesc
  * Base class of all the layers that can add/remove geometries. <br>
@@ -732,6 +734,27 @@ class OverlayLayer extends Layer {
             this.removeOverlay(overlays[i]);
         }
         return this;
+    }
+    
+    _hasGeoListeners(eventTypes) {
+        if (!eventTypes) {
+            return false;
+        }
+        if (!Array.isArray(eventTypes)) {
+            TMP_EVENTS_ARR[0] = eventTypes;
+            eventTypes = TMP_EVENTS_ARR;
+        }
+        const geos = this.getGeometries() || [];
+        for (let i = 0, len = geos.length; i < len; i++) {
+            for (let j = 0, len1 = eventTypes.length; j < len1; j++) {
+                const eventType = eventTypes[j];
+                const listens = geos[i].listens(eventType);
+                if (listens > 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
 

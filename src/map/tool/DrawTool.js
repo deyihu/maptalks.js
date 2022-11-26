@@ -210,7 +210,7 @@ class DrawTool extends MapTool {
     onDisable() {
         const map = this.getMap();
         this._restoreMapCfg();
-        this.endDraw();
+        this.endDraw({ ignoreEndEvent: true });
         if (this._map) {
             map.removeLayer(this._getDrawLayer());
             if (this.options['autoPanAtEdge']) {
@@ -458,6 +458,17 @@ class DrawTool extends MapTool {
              * @property {Event} domEvent                 - dom event
              */
             this._fireEvent('drawstart', event);
+            // snapTo First coordinate point
+            const snapTo = this._geometry.snapTo;
+            if (snapTo && isFunction(snapTo)) {
+                const snapResult = this._getSnapResult(snapTo, event.containerPoint);
+                const map = this.getMap();
+                if (map && snapResult) {
+                    const prjCoord = snapResult.prjCoord;
+                    this._clickCoords = [prjCoord];
+                    registerMode['update'](map.getProjection(), this._clickCoords, this._geometry, event);
+                }
+            }
         }
         if (mode === 'point' && event.type !== 'mousemove') {
             this.endDraw(event);
@@ -482,7 +493,7 @@ class DrawTool extends MapTool {
         if (!this._geometry) {
             return;
         }
-        let containerPoint = this._getMouseContainerPoint(event);
+        const containerPoint = this._getMouseContainerPoint(event);
         if (!this._isValidContainerPoint(containerPoint)) {
             return;
         }
@@ -595,7 +606,9 @@ class DrawTool extends MapTool {
          * @property {Point} viewPoint       - view point of the event
          * @property {Event} domEvent                 - dom event
          */
-        this._fireEvent('drawend', param);
+        if (!param.ignoreEndEvent) {
+            this._fireEvent('drawend', param);
+        }
         delete this._geometry;
         if (this.options['once']) {
             this.disable();
@@ -641,7 +654,7 @@ class DrawTool extends MapTool {
         return true;
     }
 
-    _getSnapResult (snapTo, containerPoint) {
+    _getSnapResult(snapTo, containerPoint) {
         const map = this.getMap();
         const lastContainerPoints = [];
         if (this.options.edgeAutoComplete) {
