@@ -364,6 +364,9 @@ const Canvas = {
                 }
             }
             const padding = style.textBackgroundPadding;
+            // if (isNumber(padding)) {
+            //     padding = [padding, padding];
+            // }
             textBBox._expand(padding);
             const x = textBBox.xmin, y = textBBox.ymin, w = textBBox.getWidth(), h = textBBox.getHeight();
             const alpha = ctx.globalAlpha;

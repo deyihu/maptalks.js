@@ -95,6 +95,7 @@ export default class TextMarkerSymbolizer extends PointSymbolizer {
 
     translate() {
         const s = this.symbol;
+        const textBgPadding = s.textBackgroundPadding;
         const result = {
             'textName': s['textName'],
             'textFaceName': getValueOrDefault(s['textFaceName'], 'monospace'),
@@ -126,7 +127,7 @@ export default class TextMarkerSymbolizer extends PointSymbolizer {
             'textMaxHeight': getValueOrDefault(s['textMaxHeight'], 0),
             'textBackgroundColor': s.textBackgroundColor,
             'textBackgroundOpacity': isNumber(s.textBackgroundOpacity) ? Math.min(s.textBackgroundOpacity, 1) : 1,
-            'textBackgroundPadding': isNumber(s.textBackgroundPadding) ? s.textBackgroundPadding : 2,
+            'textBackgroundPadding': Array.isArray(textBgPadding) ? textBgPadding : (isNumber(textBgPadding) ? [textBgPadding, textBgPadding] : [2, 2])
         };
 
         if (result['textMaxWidth'] > 0 && (!result['textWrapWidth'] || result['textWrapWidth'] > result['textMaxWidth'])) {
