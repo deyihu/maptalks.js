@@ -123,7 +123,10 @@ export default class TextMarkerSymbolizer extends PointSymbolizer {
             'textRotation': getValueOrDefault(s['textRotation'], 0),
 
             'textMaxWidth': getValueOrDefault(s['textMaxWidth'], 0),
-            'textMaxHeight': getValueOrDefault(s['textMaxHeight'], 0)
+            'textMaxHeight': getValueOrDefault(s['textMaxHeight'], 0),
+            'textBackgroundColor': s.textBackgroundColor,
+            'textBackgroundOpacity': isNumber(s.textBackgroundOpacity) ? Math.min(s.textBackgroundOpacity, 1) : 1,
+            'textBackgroundPadding': isNumber(s.textBackgroundPadding) ? s.textBackgroundPadding : 2,
         };
 
         if (result['textMaxWidth'] > 0 && (!result['textWrapWidth'] || result['textWrapWidth'] > result['textMaxWidth'])) {

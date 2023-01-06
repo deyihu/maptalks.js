@@ -13,10 +13,13 @@ import { createEl } from './util/dom';
 import Browser from './Browser';
 import Point from '../geo/Point';
 import { getFont, getAlignPoint } from './util/strings';
+import Extent from '../geo/Extent';
 
 const DEFAULT_STROKE_COLOR = '#000';
 const DEFAULT_FILL_COLOR = 'rgba(255,255,255,0)';
 const DEFAULT_TEXT_COLOR = '#000';
+
+const TEXT_BBOX_EXTENT = new Extent(0, 0, 0, 0);
 
 let hitTesting = false;
 
@@ -335,6 +338,48 @@ const Canvas = {
             basePoint = point.add(0, ptAlign.y),
             maxHeight = style['textMaxHeight'];
         let text, rowAlign, height = 0;
+        //draw text bbox
+        const { textBackgroundColor, textBackgroundOpacity } = style;
+        if (textBackgroundColor && textBackgroundOpacity > 0) {
+            const textBBox = TEXT_BBOX_EXTENT;
+            textBBox.xmin = Infinity;
+            textBBox.ymin = Infinity;
+            textBBox.xmax = -Infinity;
+            textBBox.ymax = -Infinity;
+            for (let i = 0, len = texts.length; i < len; i++) {
+                text = texts[i];
+                rowAlign = getAlignPoint(texts[i]['size'], style['textHorizontalAlignment'], style['textVerticalAlignment']);
+                const point = basePoint.add(rowAlign.x, i * lineHeight);
+                const textSize = text.size;
+                const minx = point.x, miny = point.y, maxx = minx + textSize.width, maxy = miny + textSize.height;
+                textBBox.xmin = Math.min(textBBox.xmin, minx);
+                textBBox.ymin = Math.min(textBBox.ymin, miny);
+                textBBox.xmax = Math.max(textBBox.xmax, maxx);
+                textBBox.ymax = Math.max(textBBox.ymax, maxy);
+                if (maxHeight > 0) {
+                    height += lineHeight;
+                    if (height + textSize['height'] >= maxHeight) {
+                        break;
+                    }
+                }
+            }
+            const padding = style.textBackgroundPadding;
+            textBBox._expand(padding);
+            const x = textBBox.xmin, y = textBBox.ymin, w = textBBox.getWidth(), h = textBBox.getHeight();
+            const alpha = ctx.globalAlpha;
+            if (ctx.globalAlpha !== textBackgroundOpacity) {
+                ctx.globalAlpha = textBackgroundOpacity;
+            }
+            const fillStyle = ctx.fillStyle;
+            ctx.fillStyle = textBackgroundColor;
+            ctx.fillRect(x, y, w, h);
+            if (ctx.globalAlpha !== alpha) {
+                ctx.globalAlpha = alpha;
+            }
+            if (ctx.fillStyle !== fillStyle) {
+                ctx.fillStyle = fillStyle;
+            }
+        }
         for (let i = 0, len = texts.length; i < len; i++) {
             text = texts[i]['text'];
             rowAlign = getAlignPoint(texts[i]['size'], style['textHorizontalAlignment'], style['textVerticalAlignment']);
