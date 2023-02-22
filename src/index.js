@@ -73,7 +73,9 @@ import Actor from './core/worker/Actor';
  * @namespace worker
  */
 const worker = {
-    Actor : Actor
+    Actor: Actor
 };
 
 export { worker };
+
+export { ResourceManager } from './core/ResourceManager';
