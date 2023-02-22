@@ -249,6 +249,7 @@ class UIMarker extends Handlerable(UIComponent) {
         if (this.isVisible()) {
             this._coordinate = this._markerCoord;
             this._setPosition();
+            this._collides();
         }
         return this;
     }
@@ -273,6 +274,17 @@ class UIMarker extends Handlerable(UIComponent) {
             return coordinates.z;
         }
         return this.options.altitude || 0;
+    }
+
+    setAltitude(alt) {
+        if (isNumber(alt) && this._markerCoord) {
+            this._markerCoord.z = alt;
+            if (this._updatePosition) {
+                this._updatePosition();
+                this._collides();
+            }
+        }
+        return this;
     }
 
     /**

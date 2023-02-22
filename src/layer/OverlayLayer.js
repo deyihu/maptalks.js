@@ -16,7 +16,8 @@ import { uuid } from '../core/uuid';
  * @instance
  */
 const options = {
-    'drawImmediate': false
+    'drawImmediate': false,
+    'geometryEvents': true
 };
 
 

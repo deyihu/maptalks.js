@@ -66,6 +66,9 @@ class MapCanvasRenderer extends MapRenderer {
             // when updated is false, should escape drawing tops and centerCross to keep handle's alpha
             this.drawTops();
             this._drawCenterCross();
+            if (map.options['debugSky']) {
+                this._debugSky();
+            }
         }
         // this._drawContainerExtent();
         // CAUTION: the order to fire frameend and layerload events
@@ -81,6 +84,8 @@ class MapCanvasRenderer extends MapRenderer {
         this._fireLayerLoadEvents();
         this.executeFrameCallbacks();
         this._canvasUpdated = false;
+        //loop ui Collides
+        map.uiCollides();
         if (Browser.checkDevicePixelRatio) {
             Browser.checkDevicePixelRatio();
         }
@@ -449,7 +454,9 @@ class MapCanvasRenderer extends MapRenderer {
 
     remove() {
         if (Browser.webgl && typeof document !== 'undefined') {
-            removeDomEvent(document, 'visibilitychange', this._thisVisibilitychange, this);
+            removeDomEvent(document, 'visibilitychange', this._thisDocVisibilitychange, this);
+            removeDomEvent(document, 'dragstart', this._thisDocDragStart, this);
+            removeDomEvent(document, 'dragend', this._thisDocDragEnd, this);
         }
         if (this._resizeInterval) {
             clearInterval(this._resizeInterval);
@@ -775,6 +782,21 @@ class MapCanvasRenderer extends MapRenderer {
         ctx.beginPath();
         ctx.fillStyle = gradient;
         ctx.fillRect(0, top, Math.ceil(clipExtent.getWidth()) * r, Math.ceil(h + fogThickness));
+    }
+
+    _debugSky() {
+        const map = this.map;
+        if (!map) {
+            return this;
+        }
+        const height = map.getContainerExtent().ymin;
+        if (height <= 0) {
+            return this;
+        }
+        const ctx = this.context;
+        ctx.strokeStyle = 'red';
+        ctx.strokeRect(0, 0, map.width, height);
+        return this;
     }
 
     _getAllLayerToRender() {

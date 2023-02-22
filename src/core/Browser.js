@@ -19,6 +19,7 @@ if (!IS_NODE) {
         android23 = ua.search('android [23]') !== -1,
         chrome = ua.indexOf('chrome') !== -1,
         gecko = ua.indexOf('gecko') !== -1 && !webkit && !window.opera && !ie,
+        iosWeixin = /iphone/i.test(ua) && /micromessenger/i.test(ua),
 
         mobile = typeof orientation !== 'undefined' || ua.indexOf('mobile') !== -1,
         msPointer = !window.PointerEvent && window.MSPointerEvent,
@@ -33,7 +34,8 @@ if (!IS_NODE) {
         // this will Improve performance 2-3FPS
         imageBitMap = typeof window !== 'undefined' && isFunction(window.createImageBitmap),
         resizeObserver = typeof window !== 'undefined' && isFunction(window.ResizeObserver),
-        btoa = typeof window !== 'undefined' && isFunction(window.btoa);
+        btoa = typeof window !== 'undefined' && isFunction(window.btoa),
+        proxy = typeof window !== 'undefined' && isFunction(window.Proxy);
 
 
     let chromeVersion = 0;
@@ -97,6 +99,7 @@ if (!IS_NODE) {
         gecko3d: gecko3d,
         opera12: opera12,
         any3d: any3d,
+        iosWeixin,
 
         mobile: mobile,
         mobileWebkit: mobile && webkit,
@@ -122,6 +125,7 @@ if (!IS_NODE) {
         decodeImageInWorker,
         monitorDPRChange: true,
         supportsPassive,
+        proxy,
         removeDPRListening: (map) => {
             if (map) {
                 delete maps[map.id];
