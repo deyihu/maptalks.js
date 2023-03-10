@@ -309,7 +309,7 @@ class MapCanvasRenderer extends MapRenderer {
     /**
      * Renders the layers
      */
-    drawLayerCanvas(layers, starting, ending) {
+    drawLayerCanvas(layers) {
         const map = this.map;
         if (!map) {
             return false;
