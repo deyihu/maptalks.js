@@ -252,7 +252,7 @@ class VectorLayer extends OverlayLayer {
     }
 
     _isShareCanvas() {
-        return this.options['shareCanvas'];
+        return false;
     }
 
     /**

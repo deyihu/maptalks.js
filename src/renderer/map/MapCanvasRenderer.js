@@ -48,28 +48,18 @@ class MapCanvasRenderer extends MapRenderer {
         map._fireEvent('framestart');
         this.updateMapDOM();
         map.clearCollisionIndex();
-        const allLayers = this._getAllLayerToRender();
-        let updated = false;
-        for (let i = 0, len = allLayers.length; i <= len; i++) {
-            const layer = allLayers[i];
-            const layers = [];
-            if (layer) {
-                layers.push(layer);
-            }
-            this.drawLayers(layers, framestamp);
-            const update = this.drawLayerCanvas(layers, i === 0, i === len - 1 || len === 0);
-            if (update) {
-                updated = update;
-            }
-        }
+        const layers = this._getAllLayerToRender();
+        this.drawLayers(layers, framestamp);
+        const updated = this.drawLayerCanvas(layers);
         if (updated) {
             // when updated is false, should escape drawing tops and centerCross to keep handle's alpha
             this.drawTops();
+            this._drawCenterCross();
+            if (map.options['debugSky']) {
+                this._debugSky();
+            }
         }
-        this._drawCenterCross();
-        if (map.options['debugSky']) {
-            this._debugSky();
-        }
+        this._needClear = false;
         // this._drawContainerExtent();
         // CAUTION: the order to fire frameend and layerload events
         // fire frameend before layerload, reason:
@@ -86,9 +76,6 @@ class MapCanvasRenderer extends MapRenderer {
         this._canvasUpdated = false;
         //loop ui Collides
         map.uiCollides();
-        if (Browser.checkDevicePixelRatio) {
-            Browser.checkDevicePixelRatio();
-        }
         return true;
     }
 
@@ -327,34 +314,28 @@ class MapCanvasRenderer extends MapRenderer {
         if (!map) {
             return false;
         }
-        if (starting) {
-            if (!this._updateCanvasSize()) {
-                this.clearCanvas();
-            }
-            /**
-             * renderstart event, an event fired when map starts to render.
-             * @event Map#renderstart
-             * @type {Object}
-             * @property {String} type           - renderstart
-             * @property {Map} target            - the map fires event
-             * @property {CanvasRenderingContext2D} context  - canvas context
-             */
-            map._fireEvent('renderstart', {
-                'context': this.context
-            });
-        }
-        if (!this.isLayerCanvasUpdated() && !this.isViewChanged()) {
-            if (ending) {
-                map._fireEvent('renderend', {
-                    'context': this.context
-                });
-            }
+        if (!this.isLayerCanvasUpdated() && !this.isViewChanged() && this._needClear === false) {
             return false;
         }
         if (!this.canvas) {
             this.createCanvas();
         }
 
+        /**
+         * renderstart event, an event fired when map starts to render.
+         * @event Map#renderstart
+         * @type {Object}
+         * @property {String} type           - renderstart
+         * @property {Map} target            - the map fires event
+         * @property {CanvasRenderingContext2D} context  - canvas context
+         */
+        map._fireEvent('renderstart', {
+            'context': this.context
+        });
+
+        if (!this._updateCanvasSize()) {
+            this.clearCanvas();
+        }
 
         const interacting = map.isInteracting(),
             limit = map.options['layerCanvasLimitOnInteracting'];
@@ -401,17 +382,16 @@ class MapCanvasRenderer extends MapRenderer {
          * @property {Map} target              - the map fires event
          * @property {CanvasRenderingContext2D} context - canvas context
          */
-        if (ending) {
-            map._fireEvent('renderend', {
-                'context': this.context
-            });
-        }
+        map._fireEvent('renderend', {
+            'context': this.context
+        });
         return true;
     }
 
     setToRedraw() {
         const layers = this._getAllLayerToRender();
-        this.clearCanvas();
+        //set maprender for clear canvas
+        this._needClear = true;
         for (let i = 0, l = layers.length; i < l; i++) {
             const renderer = layers[i].getRenderer();
             if (renderer && renderer.canvas && renderer.setToRedraw) {
