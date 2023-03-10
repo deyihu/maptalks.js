@@ -47,10 +47,6 @@ class CanvasRenderer extends Class {
         this.setToRedraw();
     }
 
-    _isShareCanvas() {
-        return this.layer && this.layer._isShareCanvas && this.layer._isShareCanvas();
-    }
-
 
     /**
      * Render the layer.
@@ -315,7 +311,7 @@ class CanvasRenderer extends Class {
     hitDetect(point) {
         const layer = this.layer;
         if (!this.context || (layer.isEmpty && layer.isEmpty()) || this.isBlank() ||
-            this._errorThrown || (layer.isVisible && !layer.isVisible()) || (this._isShareCanvas())) {
+            this._errorThrown || (layer.isVisible && !layer.isVisible())) {
             return false;
         }
         const map = this.getMap();
@@ -421,8 +417,6 @@ class CanvasRenderer extends Class {
                 canvas.style.height = size.height + 'px';
             }
             this.canvas = this.layer._canvas;
-        } else if (this._isShareCanvas()) {
-            this.canvas = Canvas2D.createShareCanvas(map.id, w, h, map.CanvasClass);
         } else {
             this.canvas = Canvas2D.createCanvas(w, h, map.CanvasClass);
         }
@@ -515,9 +509,6 @@ class CanvasRenderer extends Class {
         if (!this.canvas) {
             this.createCanvas();
             this.createContext();
-            if (this._isShareCanvas()) {
-                this.clearCanvas();
-            }
             this.layer.onCanvasCreate();
             /**
              * canvascreate event, fired when canvas created.
