@@ -140,7 +140,8 @@ const options = {
     'clickTimeThreshold': 280,
 
     'stopRenderOnOffscreen': true,
-    'preventWheelScroll': true
+    'preventWheelScroll': true,
+    'preventTouch': true
 };
 
 /**
