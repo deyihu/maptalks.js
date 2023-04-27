@@ -11,7 +11,6 @@ import {
     isObject,
     forEachCoord,
     flash,
-    sign,
     containerPointOutContainerBBox
 } from '../core/util';
 import { extendSymbol, getSymbolHash } from '../core/util/style';
