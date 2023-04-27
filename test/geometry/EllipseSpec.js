@@ -22,47 +22,52 @@ describe('Geometry.Ellipse', function () {
         REMOVE_CONTAINER(container);
     });
 
-    it('setCoordinates', function () {
+    it('setCoordinates', function (done) {
         var ellipse = new maptalks.Ellipse({ x: 0, y: 0 }, 1, 1);
 
         ellipse.setCoordinates({ x: -180, y: -75 });
         expect(ellipse.getCoordinates().toArray()).to.be.eql([-180, -75]);
+        done();
     });
 
-    it('getCenter', function () {
+    it('getCenter', function (done) {
         var ellipse = new maptalks.Ellipse({ x: 0, y: 0 }, 1, 1);
         var got = ellipse.getCenter();
 
         expect(got.x).to.eql(0);
         expect(got.y).to.eql(0);
+        done();
     });
 
-    it('getExtent', function () {
+    it('getExtent', function (done) {
         var ellipse = new maptalks.Ellipse({ x: 0, y: 0 }, 1, 1);
         var extent = ellipse.getExtent();
         expect(extent.getWidth()).to.be.above(0);
         expect(extent.getHeight()).to.be.above(0);
+        done();
     });
 
-    it('getSize', function () {
+    it('getSize', function (done) {
         var ellipse = new maptalks.Ellipse({ x: 0, y: 0 }, 100, 100);
         layer.addGeometry(ellipse);
         var size = ellipse.getSize();
 
         expect(size.width).to.be.above(0);
         expect(size.height).to.be.above(0);
+        done();
     });
 
-    it('getWidth/getHeight]', function () {
+    it('getWidth/getHeight]', function (done) {
         var ellipse = new maptalks.Ellipse({ x: 0, y: 0 }, 1, 1);
         var w = ellipse.getWidth();
         var h = ellipse.getHeight();
 
         expect(w).to.eql(1);
         expect(h).to.eql(1);
+        done();
     });
 
-    it('setWidth/setHeight', function () {
+    it('setWidth/setHeight', function (done) {
         var ellipse = new maptalks.Ellipse({ x: 0, y: 0 }, 1, 1);
         ellipse.setWidth(100);
         ellipse.setHeight(200);
@@ -71,9 +76,10 @@ describe('Geometry.Ellipse', function () {
 
         expect(w).to.eql(100);
         expect(h).to.eql(200);
+        done();
     });
 
-    it('getShell', function () {
+    it('getShell', function (done) {
         var ellipse = new maptalks.Ellipse([0, 0], 1000, 800);
         var shell = ellipse.getShell();
 
@@ -90,17 +96,19 @@ describe('Geometry.Ellipse', function () {
         expect(map.computeLength(shell[num / 4], [0, 0])).to.be.approx(ellipse.getHeight() / 2);
         expect(map.computeLength(shell[num * 3 / 4], [0, 0])).to.be.approx(ellipse.getHeight() / 2);
         expect(map.computeLength(shell[num / 2], [0, 0])).to.be.approx(ellipse.getWidth() / 2);
+        done();
     });
 
     describe('geometry fires events', function () {
-        it('canvas events', function () {
+        it('canvas events', function (done) {
             var vector = new maptalks.Ellipse(center, 1, 1);
             new COMMON_GEOEVENTS_TESTOR().testCanvasEvents(vector, map, vector.getCenter());
+            done();
         });
     });
 
     describe('change shape and position', function () {
-        it('events', function () {
+        it('events', function (done) {
             var spy = sinon.spy();
 
             var vector = new maptalks.Ellipse(center, 1, 1);
@@ -141,23 +149,26 @@ describe('Geometry.Ellipse', function () {
     });
 
     describe('can be treated as a polygon', function () {
-        it('has shell', function () {
+        it('has shell', function (done) {
             var vector = new maptalks.Ellipse(center, 100, 50);
             var shell = vector.getShell();
             expect(shell).to.have.length(vector.options['numberOfShellPoints']);
+            done();
         });
 
-        it('but doesn\'t have holes', function () {
+        it('but doesn\'t have holes', function (done) {
             var vector = new maptalks.Ellipse(center, 100, 50);
             var holes = vector.getHoles();
             expect(holes).to.be.empty();
+            done();
         });
 
-        it('toGeoJSON exported an polygon', function () {
+        it('toGeoJSON exported an polygon', function (done) {
             var vector = new maptalks.Ellipse(center, 100, 50);
             var geojson = vector.toGeoJSON().geometry;
             expect(geojson.type).to.be.eql('Polygon');
             expect(geojson.coordinates[0]).to.have.length(vector.options['numberOfShellPoints']);
+            done();
         });
     });
 
@@ -166,7 +177,7 @@ describe('Geometry.Ellipse', function () {
         COMMON_SYMBOL_TESTOR.testGeoSymbols(vector, map, done);
     });
 
-    it('Ellipse.containsPoint', function () {
+    it('Ellipse.containsPoint', function (done) {
 
         var geometry = new maptalks.Ellipse(center, 20, 10, {
             symbol: {
@@ -188,6 +199,7 @@ describe('Geometry.Ellipse', function () {
 
         var p2 = new maptalks.Point(400, 300 + 5 + 3);
         expect(geometry.containsPoint(p2)).to.be.ok();
+        done();
 
     });
 });
