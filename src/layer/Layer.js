@@ -168,6 +168,7 @@ class Layer extends JSONAble(Eventable(Renderable(Class))) {
         if (this._renderer) {
             this._renderer.setZIndex(zIndex);
         }
+        this.fire('setzindex', { zIndex });
         return this;
     }
 
@@ -486,6 +487,9 @@ class Layer extends JSONAble(Eventable(Renderable(Class))) {
             // options change Hook,subLayers Can realize its own logic,such as tileSize/tileSystem etc change
             if (this._optionsHook && isFunction(this._optionsHook)) {
                 this._optionsHook(conf);
+            }
+            if (this._silentConfig) {
+                return;
             }
             const renderer = this.getRenderer();
             if (renderer && renderer.setToRedraw) {

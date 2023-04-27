@@ -69,11 +69,11 @@ class TileHashset {
  * @property {Number}              [options.maxAvailableZoom=null] - Maximum zoom level for which tiles are available. Data from tiles at the maxAvailableZoom are used when displaying the map at higher zoom levels.
  * @property {Boolean}             [options.repeatWorld=true]  - tiles will be loaded repeatedly outside the world.
  * @property {Boolean}             [options.background=true]   - whether to draw a background during or after interacting, true by default
- * @property {Number}              [options.backgroundZoomDiff=6] - the zoom diff to find parent tile as background
  * @property {Boolean|Function}    [options.placeholder=false]    - a placeholder image to replace loading tile, can be a function with a parameter of the tile canvas
  * @property {String}              [options.fragmentShader=null]  - custom fragment shader, replace <a href="https://github.com/maptalks/maptalks.js/blob/master/src/renderer/layer/tilelayer/TileLayerGLRenderer.js#L8">the default fragment shader</a>
  * @property {String}              [options.crossOrigin=null]    - tile image's corssOrigin
  * @property {Boolean}             [options.fadeAnimation=true]  - fade animation when loading tiles
+ * @property {Number}              [options.fadeDuration=167]    - fading animation duration in ms, default is 167 (10 frames)
  * @property {Boolean}             [options.debug=false]         - if set to true, tiles will have borders and a title of its coordinates.
  * @property {String}              [options.renderer=gl]         - TileLayer's renderer, canvas or gl. gl tiles requires image CORS that canvas doesn't. canvas tiles can't pitch.
  * @property {Number}              [options.maxCacheSize=256]    - maximum number of tiles to cache
@@ -99,7 +99,6 @@ const options = {
     'repeatWorld': true,
 
     'background': true,
-    'backgroundZoomDiff': 6,
 
     'loadingLimitOnInteracting': 3,
 
@@ -116,6 +115,8 @@ const options = {
     'tileSystem': null,
 
     'fadeAnimation': !IS_NODE,
+
+    'fadeDuration': (1000 / 60 * 10),
 
     'debug': false,
 
@@ -141,7 +142,8 @@ const options = {
 
     'tileLimitPerFrame': 0,
 
-    'backZoomOffset': 0,
+    'tileStackStartDepth': 7,
+    'tileStackDepth': 3,
 
     'awareOfTerrain': true
 };
@@ -347,7 +349,7 @@ class TileLayer extends Layer {
             z = this._getTileZoom(map.getZoom());
         }
         const sr = this.getSpatialReference();
-        const maxZoom = Math.min(z, this.getMaxZoom());
+        const maxZoom = Math.min(z, this.getMaxZoom(), this.options['maxAvailableZoom'] || Infinity);
         const projectionView = map.projViewMatrix;
         const fullExtent = this._getTileFullExtent();
 
@@ -393,9 +395,10 @@ class TileLayer extends Layer {
         const offsets = {
             0: offset0
         };
-        const preservedZoom = this.options['backZoomOffset'] + z;
+
         const extent = new PointExtent();
         const tiles = [];
+        const parents = [];
         while (queue.length > 0) {
             const node = queue.pop();
             if (node.z === maxZoom) {
@@ -407,23 +410,31 @@ class TileLayer extends Layer {
                 offsets[node.z + 1] = this._getTileOffset(node.z + 1);
             }
             this._splitNode(node, projectionView, queue, tiles, extent, maxZoom, offsets[node.z + 1], layer && layer.getRenderer(), glRes);
-            if (preservedZoom < z && tiles[tiles.length - 1] !== node && preservedZoom === node.z) {
-                // extent._combine(node.extent2d);
-                tiles.push(node);
+            if (this.isParentTile(z, maxZoom, node)) {
+                parents.push(node);
             }
         }
+        parents.sort(sortingTiles);
         return {
             tileGrids: [
                 {
                     extent,
                     count: tiles.length,
                     tiles,
+                    parents,
                     offset: [0, 0],
                     zoom: z
                 }
             ],
             count: tiles.length
         };
+    }
+
+    isParentTile(z, maxZoom, tile) {
+        const stackMinZoom = Math.max(this.getMinZoom(), z - this.options['tileStackStartDepth']);
+        const stackMaxZoom = Math.min(maxZoom, stackMinZoom + this.options['tileStackDepth']);
+        return tile.z >= stackMinZoom && tile.z < stackMaxZoom;
+
     }
 
     _splitNode(node, projectionView, queue, tiles, gridExtent, maxZoom, offset, parentRenderer, glRes) {
@@ -492,7 +503,6 @@ class TileLayer extends Layer {
                         error: node.error / 2,
                         res,
                         id: tileId,
-                        parentNodeId: node.id,
                         children: [],
                         url: this.getTileUrl(childX, childY, z + this.options['zoomOffset']),
                         offset
@@ -592,13 +602,16 @@ class TileLayer extends Layer {
             const glRes = map.getGLRes();
             this._zScale = map.altitudeToPoint(100, glRes) / 100;
         }
+        const renderer = this.getRenderer();
         const { xmin, ymin, xmax, ymax } = node.extent2d;
         TILE_BOX[0][0] = (xmin - offset[0]) * glScale;
         TILE_BOX[0][1] = (ymin - offset[1]) * glScale;
-        TILE_BOX[0][2] = (node.minAltitude || 0) * this._zScale;
+        const minAltitude = node.minAltitude || renderer && renderer.avgMinAltitude || 0;
+        TILE_BOX[0][2] = minAltitude * this._zScale;
         TILE_BOX[1][0] = (xmax - offset[0]) * glScale;
         TILE_BOX[1][1] = (ymax - offset[1]) * glScale;
-        TILE_BOX[1][2] = (node.maxAltitude || 0) * this._zScale;
+        const maxAltitude = node.maxAltitude || renderer && renderer.avgMaxAltitude || 0;
+        TILE_BOX[1][2] = maxAltitude * this._zScale;
         return intersectsBox(projectionView, TILE_BOX);
     }
 
@@ -1167,19 +1180,26 @@ class TileLayer extends Layer {
     }
 
     _getTileOffset(z) {
+        if (!this._tileOffsets) {
+            this._tileOffsets = {};
+        }
+        if (this._tileOffsets[z]) {
+            return this._tileOffsets[z];
+        }
         let offset = this.options['offset'];
         if (isFunction(offset)) {
             offset = offset.call(this, z);
         }
         if (isNumber(offset)) {
-            return [offset, offset];
+            offset = [offset, offset];
         }
-        return offset || [0, 0];
+        this._tileOffsets[z] = offset || [0, 0];
+        return this._tileOffsets[z];
     }
 
     _getTileId(x, y, zoom, id) {
         //id is to mark GroupTileLayer's child layers
-        return `${id || this.getId()}_${y}_${x}_${zoom}`;
+        return `${id || this.getId()}_${x}_${y}_${zoom}`;
     }
 
 
@@ -1360,3 +1380,7 @@ function distanceToRect(min, max, xyz) {
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+
+function sortingTiles(t0, t1) {
+    return t0.z - t1.z;
+}

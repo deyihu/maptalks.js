@@ -312,6 +312,8 @@ class Geometry extends JSONAble(Eventable(Handlerable(Class))) {
      * @fires Geometry#symbolchange
      * @example
      * var marker = new Marker([0, 0], {
+     *  // if has markerFile , the priority of the picture is greater than the vector and the path of svg
+     *  // svg image type:'path';vector type:'cross','x','diamond','bar','square','rectangle','triangle','ellipse','pin','pie'
      *    symbol : {
      *       markerType : 'ellipse',
      *       markerWidth : 20,
@@ -437,11 +439,9 @@ class Geometry extends JSONAble(Eventable(Handlerable(Class))) {
         // const center = this.getCenter();
         const glRes = map.getGLRes();
         const minAltitude = this.getMinAltitude();
-        const altitude = map.altitudeToPoint(minAltitude, glRes) * sign(minAltitude);
-        const extent = extent2d.convertTo(c => map._pointAtResToContainerPoint(c, glRes, altitude, TEMP_POINT0), out);
-        let maxAltitude = this.getMaxAltitude();
+        const extent = extent2d.convertTo(c => map._pointAtResToContainerPoint(c, glRes, minAltitude, TEMP_POINT0), out);
+        const maxAltitude = this.getMaxAltitude();
         if (maxAltitude !== minAltitude) {
-            maxAltitude = map.altitudeToPoint(maxAltitude, glRes) * sign(maxAltitude);
             const extent2 = extent2d.convertTo(c => map._pointAtResToContainerPoint(c, glRes, maxAltitude, TEMP_POINT0), TEMP_EXTENT);
             extent._combine(extent2);
         }
