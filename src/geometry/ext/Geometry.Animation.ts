@@ -2,14 +2,16 @@ import { isFunction } from '../../core/util';
 import { extendSymbol } from '../../core/util/style';
 import { Animation, Player } from '../../core/Animation';
 import Coordinate from '../../geo/Coordinate';
+/**
+ * 
+ * @mixin GeometryAnimation
+ */
 type Constructor = new (...args: any[]) => {};
 export default function GeometryAnimation<TBase extends Constructor>(Base: TBase) {
-
     return class extends Base {
         _animPlayer: Player;
         _animationStarted: boolean;
 
-        /** @lends Geometry.prototype */
         /**
          * Animate the geometry
          *
@@ -21,6 +23,7 @@ export default function GeometryAnimation<TBase extends Constructor>(Base: TBase
          * @param  {Boolean}  [options.repeat=false]      - repeat animation
          * @param  {Function} [step=null]  - step function during animation, animation frame as the parameter
          * @return {animation.Player} animation player
+         * @function GeometryAnimation.animate
          * @example
          * var player = marker.animate({
          *     'symbol': {

@@ -184,6 +184,7 @@ export function replaceVariable(str: string, props) {
 /**
  * Generate text descriptors according to symbols
  * @return {Object} text descriptor
+ * @memberOf StringUtil
  */
 export function describeText(textContent: any, symbol) {
     if (isNumber(textContent)) {

@@ -111,6 +111,8 @@ const options: GeometyOptionsType = {
  * @mixes Eventable
  * @mixes Handlerable
  * @mixes JSONAble
+ * @mixes GeometryInfoWindow
+ * @mixes GeometryAnimation
  * @mixes ui.Menuable
  */
 

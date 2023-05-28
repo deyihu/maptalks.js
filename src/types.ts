@@ -24,3 +24,14 @@ export type MapPanelsType = {
 export type GeoPropertiesType = {
     [key: string]: any
 }
+
+export type PaddingType = {
+    paddingLeft?: number;
+    paddingRight?: number;
+    paddingTop?: number;
+    paddingBottom?: number;
+}
+
+export type MapFitOptionsType = PaddingType & {
+    animation?: boolean;
+}

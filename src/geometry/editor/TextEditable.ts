@@ -17,6 +17,7 @@ export default function TextEditable<TBase extends Constructor>(Base: TBase) {
          * Start to edit the text, editing will be ended automatically whenever map is clicked.
          *
          * @return {TextMarker} this
+         * @function TextEditable.startEditText
          * @fires TextMarker#edittextstart
          */
         startEditText() {
@@ -44,6 +45,7 @@ export default function TextEditable<TBase extends Constructor>(Base: TBase) {
          * End text edit.
          *
          * @return {TextMarker} this
+         * @function TextEditable.endEditText
          * @fires TextMarker#edittextend
          */
         endEditText() {
@@ -82,6 +84,7 @@ export default function TextEditable<TBase extends Constructor>(Base: TBase) {
          * Whether the text is being edited.
          *
          * @return {Boolean}
+         * @function TextEditable.isEditingText
          */
         isEditingText() {
             if (this._textEditor) {
@@ -93,6 +96,7 @@ export default function TextEditable<TBase extends Constructor>(Base: TBase) {
         /**
          * Get the text editor which is an [ui.UIMarker]{@link ui.UIMarker}
          * @return {ui.UIMarker} text editor
+         * @function TextEditable.getTextEditor
          */
         getTextEditor() {
             return this._editUIMarker;

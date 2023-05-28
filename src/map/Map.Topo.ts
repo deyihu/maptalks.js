@@ -7,6 +7,7 @@ import Point from '../geo/Point';
 type Constructor = new (...args: any[]) => {};
 /**
  * Methods of topo computations
+ * @mixin MapTopo
  */
 
 export default function MapTopo<TBase extends Constructor>(Base: TBase) {
@@ -17,6 +18,7 @@ export default function MapTopo<TBase extends Constructor>(Base: TBase) {
          * @param {Number[]|Coordinate} coord1 - coordinate 1
          * @param {Number[]|Coordinate} coord2 - coordinate 2
          * @return {Number} distance, unit is meter
+         * @function MapTopo.computeLength
          * @example
          * var distance = map.computeLength([0, 0], [0, 20]);
          */
@@ -38,6 +40,7 @@ export default function MapTopo<TBase extends Constructor>(Base: TBase) {
          * Caculate a geometry's length.
          * @param {Geometry} geometry - geometry to caculate
          * @return {Number} length, unit is meter
+         * @function MapTopo.computeGeometryLength
          */
         computeGeometryLength(geometry: Geometry) {
             //@ts-ignore
@@ -48,6 +51,7 @@ export default function MapTopo<TBase extends Constructor>(Base: TBase) {
          * Caculate a geometry's area.
          * @param  {Geometry} geometry - geometry to caculate
          * @return {Number} area, unit is sq.meter
+         * @function MapTopo.computeGeometryArea
          */
         computeGeometryArea(geometry: Geometry) {
             //@ts-ignore
@@ -66,6 +70,7 @@ export default function MapTopo<TBase extends Constructor>(Base: TBase) {
          * @param {Boolean}  [opts.includeInvisible=false] - whether to identify invisible layers.
          * @param {Function} callback           - the callback function using the result geometries as the parameter.
          * @return {Map} this
+         * @function MapTopo.identify
          * @example
          * map.identify({
          *      coordinate: [0, 0],
@@ -93,6 +98,7 @@ export default function MapTopo<TBase extends Constructor>(Base: TBase) {
          * @param {Boolean}  [opts.includeInvisible=false] - whether to identify invisible layers.
          * @param {Function} callback           - the callback function using the result geometries as the parameter.
          * @return {Map} this
+         * @function MapTopo.identifyAtPoint
          * @example
          * map.identifyAtPoint({
          *      containerPoint: [200, 300],

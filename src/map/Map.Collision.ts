@@ -3,6 +3,11 @@ import CollisionIndex from '../core/CollisionIndex';
 type Constructor = new (...args: any[]) => {};
 const UICollisionIndex = new CollisionIndex();
 
+/**
+ * 
+ * @mixin MapCollision
+ */
+
 export default function MapCollision<TBase extends Constructor>(Base: TBase) {
     return class extends Base {
         _collisionIndex: CollisionIndex;
@@ -14,6 +19,7 @@ export default function MapCollision<TBase extends Constructor>(Base: TBase) {
         /**
          * Get map scope collision index
          * @returns {CollisionIndex} collision index
+         * @function MapCollision.getCollisionIndex
          */
         getCollisionIndex() {
             if (!this._collisionIndex) {
@@ -25,6 +31,7 @@ export default function MapCollision<TBase extends Constructor>(Base: TBase) {
         /**
          * Create a new collisionIndex
          * @returns {CollisionIndex} new collision index
+         * @function MapCollision.createCollisionIndex
          */
         createCollisionIndex() {
             this.clearCollisionIndex();
@@ -35,6 +42,7 @@ export default function MapCollision<TBase extends Constructor>(Base: TBase) {
         /**
          * Clear collision index
          * @returns {Map} this
+         * @function MapCollision.clearCollisionIndex
          */
         clearCollisionIndex() {
             this.collisionFrameTime = 0;

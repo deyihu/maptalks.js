@@ -1,6 +1,9 @@
 import { Coordinate, Extent, Point, PointExtent, Size } from "./../geo";
 import Map from "./Map";
 const TEMP_COORD = new Coordinate(0, 0);
+/**
+ * implements map coord transform methods
+ */
 
 Map.include(
     /** @lends Map.prototype */{

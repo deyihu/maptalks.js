@@ -2,16 +2,19 @@ import { extend } from '../../core/util';
 // import Geometry from '../Geometry';
 import InfoWindow from '../../ui/InfoWindow';
 type Constructor = new (...args: any[]) => {};
-export default function GeometryInfoWindow<TBase extends Constructor>(Base: TBase) {
+/**
+ * 
+ * @mixin GeometryInfoWindow
+ */
+function GeometryInfoWindow<TBase extends Constructor>(Base: TBase) {
     return class extends Base {
         _infoWindow: any;
         _infoWinOptions: object;
-
-        /** @lends Geometry.prototype */
         /**
          * Set an InfoWindow to the geometry
          * @param {Object} options - construct [options]{@link ui.InfoWindow#options} for the InfoWindow
          * @return {Geometry} this
+         * @function GeometryInfoWindow.setInfoWindow
          * @example
          * geometry.setInfoWindow({
          *     title    : 'This is a title',
@@ -40,6 +43,7 @@ export default function GeometryInfoWindow<TBase extends Constructor>(Base: TBas
         /**
          * Get the InfoWindow instance.
          * @return {ui.InfoWindow}
+         * @function GeometryInfoWindow.getInfoWindow
          */
         getInfoWindow() {
             if (!this._infoWindow) {
@@ -52,6 +56,7 @@ export default function GeometryInfoWindow<TBase extends Constructor>(Base: TBas
          * Open the InfoWindow, default on the center of the geometry.
          * @param  {Coordinate} [coordinate=null] - coordinate to open the InfoWindow
          * @return {Geometry} this
+         * @function GeometryInfoWindow.openInfoWindow
          */
         openInfoWindow(coordinate) {
             //@ts-ignore
@@ -77,6 +82,7 @@ export default function GeometryInfoWindow<TBase extends Constructor>(Base: TBas
         /**
          * Close the InfoWindow
          * @return {Geometry} this
+         * @function GeometryInfoWindow.closeInfoWindow
          */
         closeInfoWindow() {
             if (this._infoWindow) {
@@ -88,6 +94,7 @@ export default function GeometryInfoWindow<TBase extends Constructor>(Base: TBas
         /**
          * Remove the InfoWindow
          * @return {Geometry} this
+         * @function GeometryInfoWindow.removeInfoWindow
          */
         removeInfoWindow() {
             this._unbindInfoWindow();
@@ -117,3 +124,4 @@ export default function GeometryInfoWindow<TBase extends Constructor>(Base: TBas
         }
     }
 }
+export default GeometryInfoWindow;

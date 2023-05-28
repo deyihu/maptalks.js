@@ -6,10 +6,11 @@ let dedicatedWorker = 0;
 const EMPTY_BUFFERS = [];
 
 /**
+ *
  * An actor to exchange data from main-thread to workers
  * contains code from [mapbox-gl-js](https://github.com/mapbox/mapbox-gl-js)
  * @category core
- * @memberof worker
+ * @memberOf worker
  * @example
  *  const workerKey = 'test_worker_key';
     maptalks.registerWorkerAdapter(workerKey, function (exports, global) {
@@ -42,7 +43,7 @@ const EMPTY_BUFFERS = [];
       console.log(data);
     });
  */
-export default class Actor {
+ class Actor {
 
     workerKey: string;
     currentActor: number;
@@ -202,3 +203,4 @@ function asyncAll(array, fn, callback) {
         });
     });
 }
+export default Actor;

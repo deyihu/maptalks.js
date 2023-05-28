@@ -203,6 +203,7 @@ function Eventable<TBase extends Constructor>(Base: TBase) {
          * Get all the listening event types
          *
          * @returns {String[]} events
+         * @function Eventable.getListeningEvents
          */
         getListeningEvents() {
             if (!this._eventMap) {

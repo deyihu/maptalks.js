@@ -29,7 +29,7 @@ import { Player } from './../core/Animation';
 import MapCanvasRenderer from './../renderer/map/MapCanvasRenderer';
 import MapCollision from './Map.Collision';
 import MapTopo from './Map.Topo';
-import { MapDataURLType, MapPanelsType, MapViewType } from './../types';
+import { MapDataURLType, MapFitOptionsType, MapPanelsType, MapViewType, PaddingType } from './../types';
 
 
 const TEMP_COORD = new Coordinate(0, 0);
@@ -283,6 +283,8 @@ export type MapOptionsType = {
  *
  * @mixes Eventable
  * @mixes Handlerable
+ * @mixes MapCollision
+ * @mixes MapTopo
  * @mixes ui.Menuable
  * @mixes Renderable
  *
@@ -424,7 +426,7 @@ class Map extends MapTopo(MapCollision(Handlerable(Eventable(Renderable(Class)))
         this._Load();
         this.proxyOptions();
     }
-   
+
     static fromJSON(container, profile, options): Map {
         return null;
     }
@@ -677,7 +679,7 @@ class Map extends MapTopo(MapCollision(Handlerable(Eventable(Renderable(Class)))
      * @param  {Number} [padding.paddingBottom] - Sets the amount of padding in the bottom of a map container
      * @return {Map} this
      */
-    setCenter(center, padding?) {
+    setCenter(center: Coordinate | Array<number>, padding?: PaddingType) {
         if (!center) {
             return this;
         }
@@ -1069,7 +1071,8 @@ class Map extends MapTopo(MapCollision(Handlerable(Eventable(Renderable(Class)))
      * @param  {Number} [options.paddingBottom] - Sets the amount of padding in the bottom of a map container
      * @returns {Object|null}
      */
-    _getPaddingSize(options = {}) {
+    _getPaddingSize(options?: PaddingType) {
+        options = options || {};
         if (options['paddingLeft'] || options['paddingTop'] || options['paddingRight'] || options['paddingBottom']) {
             return {
                 width: (options['paddingLeft'] || 0) + (options['paddingRight'] || 0),
@@ -1089,7 +1092,7 @@ class Map extends MapTopo(MapCollision(Handlerable(Eventable(Renderable(Class)))
      * @param  {Object} [padding.paddingBottom] - Sets the amount of padding in the bottom of a map container
      * @return {Number} zoom fit for scale starting from fromZoom
      */
-    getFitZoom(extent, isFraction?, padding?) {
+    getFitZoom(extent: Extent, isFraction?: boolean, padding?: PaddingType) {
         if (!extent || !(extent instanceof Extent)) {
             return this._zoomLevel;
         }
@@ -1191,9 +1194,10 @@ class Map extends MapTopo(MapCollision(Handlerable(Eventable(Renderable(Class)))
      * @param  {Number} [padding.paddingBottom] - Sets the amount of padding in the bottom of a map container
      * @return {Coordinate}
      */
-    _getCenterByPadding(center, zoom, padding = {}) {
+    _getCenterByPadding(center, zoom, padding?: PaddingType) {
         const point = this.coordinateToPoint(center, zoom);
         //@ts-ignore
+        padding = padding || {};
         const { paddingLeft = 0, paddingRight = 0, paddingTop = 0, paddingBottom = 0 } = padding;
         let pX = 0;
         let pY = 0;
@@ -1226,7 +1230,7 @@ class Map extends MapTopo(MapCollision(Handlerable(Eventable(Renderable(Class)))
      * @param  {Number} [options.paddingBottom] - Sets the amount of padding in the bottom of a map container
      * @return {Map} - this
      */
-    fitExtent(extent: Extent | Array<number>, zoomOffset?: number, options?, step?) {
+    fitExtent(extent: Extent | Array<number>, zoomOffset?: number, options?: MapFitOptionsType, step?: Function) {
         if (!extent) {
             return this;
         }

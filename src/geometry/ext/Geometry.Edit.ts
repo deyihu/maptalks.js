@@ -1,8 +1,6 @@
 import Geometry from '../Geometry';
 import GeometryEditor from '../editor/GeometryEditor';
-Geometry.include({
-
-    /** @lends Geometry.prototype */
+Geometry.include(/** @lends Geometry.prototype */{
     /**
      * Start to edit
      * @param {Object} [options=null]        - edit options
