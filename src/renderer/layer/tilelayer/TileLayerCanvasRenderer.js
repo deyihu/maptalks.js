@@ -11,6 +11,7 @@ import {
 import Canvas2D from '../../../core/Canvas';
 import Browser from '../../../core/Browser';
 import { default as TileLayer } from '../../../layer/tile/TileLayer';
+import WMSTileLayer from '../../../layer/tile/WMSTileLayer';
 import CanvasRenderer from '../CanvasRenderer';
 import Point from '../../../geo/Point';
 import LRUCache from '../../../core/util/LRUCache';
@@ -72,7 +73,9 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         this._parentTiles = [];
         this._childTiles = [];
         this._tileQueue = [];
-        this.tileCache = new LRUCache(layer.options['maxCacheSize'], this.deleteTile.bind(this));
+        this.tileCache = new LRUCache(layer.options['maxCacheSize'], tile => {
+            this.deleteTile(tile);
+        });
         if (Browser.decodeImageInWorker && this.layer.options['decodeImageInWorker'] && (layer.options['renderer'] === 'gl' || !Browser.safari && !Browser.iosWeixin)) {
             this._tileImageWorkerConn = new TileWorkerConnection();
         }
@@ -102,6 +105,7 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
             // 导致可能出现consumeTileQueue在fxaa阶段后调用，之后的阶段就不再绘制。
             // 改为consumeTileQueue只在finalRender时调用即解决问题
             this._consumeTileQueue();
+            this._computeAvgTileAltitude();
             this._renderTimestamp = timestamp;
         }
 
@@ -183,7 +187,10 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
 
         for (let i = 0; i < l; i++) {
             const tileGrid = tileGrids[i];
-            const allTiles = tileGrid['tiles'];
+            const gridTiles = tileGrid['tiles'];
+            const parents = tileGrid['parents'] || EMPTY_ARRAY;
+            const parentCount = parents.length;
+            const allTiles = parents.concat(gridTiles);
 
             let placeholder;
             if (allTiles.length) {
@@ -191,21 +198,27 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
             }
 
             for (let j = 0, l = allTiles.length; j < l; j++) {
-                const tile = allTiles[j],
-                    tileId = tile['id'];
+                const tile = allTiles[j];
+                const tileId = tile['id'];
+                const isParentTile = j < parentCount;
                 //load tile in cache at first if it has.
                 let tileLoading = false;
                 if (this._isLoadingTile(tileId)) {
                     tileLoading = loading = true;
                     this.tilesLoading[tileId].current = true;
                 } else {
-                    const cached = this._getCachedTile(tileId);
+                    const cached = this._getCachedTile(tileId, isParentTile);
                     if (cached) {
-                        if (cached.image && this.getTileOpacity(cached.image) < 1) {
-                            tileLoading = loading = true;
-                            this.setToRedraw();
+                        if (!isParentTile) {
+                            if (cached.image && this.isTileFadingIn(cached.image)) {
+                                tileLoading = loading = true;
+                                this.setToRedraw();
+                            }
+                            tiles.push(cached);
+                            if (!this.isTileComplete(cached)) {
+                                tileLoading = true;
+                            }
                         }
-                        tiles.push(cached);
                     } else {
                         tileLoading = loading = true;
                         const hitLimit = loadingLimit && (loadingCount + preLoadingCount[0]) > loadingLimit;
@@ -216,10 +229,9 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
                         }
                     }
                 }
+                if (isParentTile) continue;
                 if (!tileLoading) continue;
-                if (checkedTiles[tileId]) {
-                    continue;
-                }
+                if (checkedTiles[tileId]) continue;
 
                 checkedTiles[tileId] = 1;
                 if (placeholder && !placeholderKeys[tileId]) {
@@ -233,41 +245,58 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
                     placeholderKeys[tileId] = 1;
                 }
 
-                const parentTile = this._findParentTile(tile);
-                if (parentTile) {
-                    const parentId = parentTile.info.id;
-                    if (parentKeys[parentId] === undefined) {
-                        parentKeys[parentId] = parentTiles.length;
-                        parentTiles.push(parentTile);
-                    }/* else {
-                        //replace with parentTile of above tiles
-                        parentTiles[parentKeys[parentId]] = parentTile;
-                    } */
-                } else if (!parentTiles.length) {
-                    const children = this._findChildTiles(tile);
-                    if (children.length) {
-                        children.forEach(c => {
-                            if (!childKeys[c.info.id]) {
-                                childTiles.push(c);
-                                childKeys[c.info.id] = 1;
-                            }
-                        });
+                const children = this._findChildTiles(tile);
+                if (children.length) {
+                    children.forEach(c => {
+                        if (!childKeys[c.info.id]) {
+                            childTiles.push(c);
+                            childKeys[c.info.id] = 1;
+                        }
+                    });
+                }
+                // (children.length !== 4) means it's not complete, we still need a parent tile
+                if (!children.length || children.length !== 4) {
+                    const parentTile = this._findParentTile(tile);
+                    if (parentTile) {
+                        const parentId = parentTile.info.id;
+                        if (parentKeys[parentId] === undefined) {
+                            parentKeys[parentId] = parentTiles.length;
+                            parentTiles.push(parentTile);
+                        }/* else {
+                            //replace with parentTile of above tiles
+                            parentTiles[parentKeys[parentId]] = parentTile;
+                        } */
                     }
                 }
             }
         }
 
-        if (parentTiles.length) {
-            childTiles.length = 0;
-            this._childTiles.length = 0;
-        }
+        this.tileCache.shrink();
+
+        // if (parentTiles.length) {
+        //     childTiles.length = 0;
+        //     this._childTiles.length = 0;
+        // }
         return {
             childTiles, parentTiles, tiles, placeholders, loading, loadingCount, tileQueue
         };
     }
 
+    removeTileCache(tileId) {
+        delete this.tilesInView[tileId];
+        this.tileCache.remove(tileId);
+    }
+
     isTileCachedOrLoading(tileId) {
         return this.tileCache.get(tileId) || this.tilesInView[tileId] || this.tilesLoading[tileId];
+    }
+
+    isTileCached(tileId) {
+        return !!(this.tileCache.get(tileId) || this.tilesInView[tileId]);
+    }
+
+    isTileFadingIn(tileImage) {
+        return this._getTileFadingOpacity(tileImage) < 1;
     }
 
     _drawTiles(tiles, parentTiles, childTiles, placeholders, parentContext) {
@@ -282,23 +311,54 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
             this._childTiles.sort(this._compareTiles);
         }
 
+        let drawBackground = true;
+        const backgroundTimestamp = this.canvas._parentTileTimestamp;
+        if (this.layer.constructor === TileLayer || this.layer.constructor === WMSTileLayer) {
+            // background tiles are only painted once for TileLayer and WMSTileLayer per frame.
+            if (this._renderTimestamp === backgroundTimestamp) {
+                drawBackground = false;
+            } else {
+                this.canvas._parentTileTimestamp = this._renderTimestamp;
+            }
+        }
+
         const context = { tiles, parentTiles: this._parentTiles, childTiles: this._childTiles, parentContext };
         this.onDrawTileStart(context, parentContext);
 
-
-        if (this.layer.options['opacity'] >= 1) {
+        if (drawBackground && this.layer.options['opacity'] === 1) {
+            this.layer._silentConfig = true;
+            const fadingAnimation = this.layer.options['fadeAnimation'];
+            this.layer.options['fadeAnimation'] = false;
+            // _hasOwnSR 时，瓦片之间会有重叠，会产生z-fighting，所以背景瓦片要后绘制
+            this.drawingChildTiles = true;
             this._childTiles.forEach(t => this._drawTile(t.info, t.image, parentContext));
+            delete this.drawingChildTiles;
+            this.drawingParentTiles = true;
             this._parentTiles.forEach(t => this._drawTile(t.info, t.image, parentContext));
+            delete this.drawingParentTiles;
+            this.layer.options['fadeAnimation'] = fadingAnimation;
+            this.layer._silentConfig = false;
         }
 
+        this.drawingCurrentTiles = true;
         tiles.sort(this._compareTiles);
         for (let i = 0, l = tiles.length; i < l; i++) {
             this._drawTileAndCache(tiles[i], parentContext);
         }
+        delete this.drawingCurrentTiles;
 
-        if (this.layer.options['opacity'] < 1) {
+        if (drawBackground && this.layer.options['opacity'] < 1) {
+            this.layer._silentConfig = true;
+            const fadingAnimation = this.layer.options['fadeAnimation'];
+            this.layer.options['fadeAnimation'] = false;
+            this.drawingChildTiles = true;
             this._childTiles.forEach(t => this._drawTile(t.info, t.image, parentContext));
+            delete this.drawingChildTiles;
+            this.drawingParentTiles = true;
             this._parentTiles.forEach(t => this._drawTile(t.info, t.image, parentContext));
+            delete this.drawingParentTiles;
+            this.layer.options['fadeAnimation'] = fadingAnimation;
+            this.layer._silentConfig = false;
         }
 
         placeholders.forEach(t => this._drawTile(t.info, t.image, parentContext));
@@ -317,10 +377,8 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
     }
 
     _drawTileAndCache(tile, parentContext) {
-        tile.current = true;
         this.tilesInView[tile.info.id] = tile;
         this._drawTile(tile.info, tile.image, parentContext);
-        this.tileCache.add(tile.info.id, tile);
     }
 
     drawOnInteracting(event, timestamp, context) {
@@ -427,9 +485,13 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
     }
 
     loadTile(tile) {
-        let tileImage;
-        if (this._tileImageWorkerConn && this.loadTileImage === this.constructor.prototype.loadTileImage) {
-            tileImage = {};
+        let tileImage = {};
+        if (this.loadTileBitmap) {
+            const onLoad = (bitmap) => {
+                this.onTileLoad(bitmap, tile);
+            };
+            this.loadTileBitmap(tile['url'], tile, onLoad);
+        } else if (this._tileImageWorkerConn && this.loadTileImage === this.constructor.prototype.loadTileImage) {
             this._fetchImage(tileImage, tile);
         } else {
             const tileSize = this.layer.getTileSize(tile.layer);
@@ -502,6 +564,22 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         /* eslint-enable no-unmodified-loop-condition */
     }
 
+    _computeAvgTileAltitude() {
+        let sumMin = 0;
+        let sumMax = 0;
+        let count = 0;
+        for (const p in this.tilesInView) {
+            const info = this.tilesInView[p] && this.tilesInView[p].info;
+            if (info) {
+                sumMin += info.minAltitude || 0;
+                sumMax += info.maxAltitude || 0;
+                count++;
+            }
+        }
+        this.avgMinAltitude = sumMin / count;
+        this.avgMaxAltitude = sumMax / count;
+    }
+
     checkTileInQueue() {
         return true;
     }
@@ -529,10 +607,14 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         this.layer.fire('tileload', e);
         // let user update tileImage in listener if needed
         tileImage = e.tileImage;
-        tileImage.loadTime = now();
+        this.resetTileLoadTime(tileImage);
         delete this.tilesLoading[id];
         this._addTileToCache(tileInfo, tileImage);
         this.setToRedraw();
+    }
+
+    resetTileLoadTime(tileImage) {
+        tileImage.loadTime = now();
     }
 
     onTileError(tileImage, tileInfo) {
@@ -589,11 +671,10 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
             cp = map._pointAtResToContainerPoint(point, tileInfo.res, 0, TEMP_POINT),
             bearing = map.getBearing(),
             transformed = bearing || zoom !== tileZoom;
-        const opacity = this.getTileOpacity(tileImage);
+        const opacity = this.getTileOpacity(tileImage, tileInfo);
         const alpha = ctx.globalAlpha;
         if (opacity < 1) {
             ctx.globalAlpha = opacity;
-            this.setToRedraw();
         }
         if (!transformed) {
             cp._round();
@@ -607,9 +688,9 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
             ctx.translate(x, y);
             if (bearing) {
                 ctx.rotate(-bearing * Math.PI / 180);
-                w += 0.1;
-                h += 0.1;
             }
+            w += 0.5;
+            h += 0.5;
             const res = map._getResolution();
             if (res !== tileInfo.res) {
                 const scale = tileInfo.res / res;
@@ -643,22 +724,44 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
     getDebugInfo(tileId) {
         const xyz = tileId.split('_');
         const length = xyz.length;
-        return 'x:' + xyz[length - 2] + ', y:' + xyz[length - 3] + ', z:' + xyz[length - 1];
+        return xyz[length - 3] + '/' + xyz[length - 2] + '/' + xyz[length - 1];
     }
 
     _findChildTiles(info) {
         const layer = this._getLayerOfTile(info.layer);
-        if (!layer || !layer.options['background']) {
-            return [];
+        if (!layer || !layer.options['background'] || info.z > this.layer.getMaxZoom()) {
+            return EMPTY_ARRAY;
         }
         const map = this.getMap();
         const children = [];
+        if (layer._isPyramidMode()) {
+            // only find next level's children
+            const zoomOffset = layer.options['zoomOffset'];
+            const cx = info.x * 2;
+            const cy = info.y * 2;
+            const cz = info.z + 1;
+            for (let j = 0; j < 2; j++) {
+                for (let jj = 0; jj < 2; jj++) {
+                    const id = layer._getTileId(cx + j, cy + jj, cz + zoomOffset, info.layer);
+                    if (this.tileCache.has(id)) {
+                        const tile = this.tileCache.getAndRemove(id);
+                        if (this.isValidCachedTile(tile)) {
+                            children.push(tile);
+                            this.tileCache.add(id, tile);
+                        }
+                    }
+                }
+            }
+
+            return children;
+        }
+        const zoomDiff = 1;
         const res = info.res;
         const min = info.extent2d.getMin(),
             max = info.extent2d.getMax(),
             pmin = layer._project(map._pointToPrjAtRes(min, res, TEMP_POINT1), TEMP_POINT1),
             pmax = layer._project(map._pointToPrjAtRes(max, res, TEMP_POINT2), TEMP_POINT2);
-        const zoomDiff = 3;
+
         for (let i = 1; i < zoomDiff; i++) {
             this._findChildTilesAt(children, pmin, pmax, layer, info.z + i);
         }
@@ -683,8 +786,10 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
                 id = layer._getTileId(i, ii, childZoom + zoomOffset, layerId);
                 if (this.tileCache.has(id)) {
                     tile = this.tileCache.getAndRemove(id);
-                    children.push(tile);
-                    this.tileCache.add(id, tile);
+                    if (this.isValidCachedTile(tile)) {
+                        children.push(tile);
+                        this.tileCache.add(id, tile);
+                    }
                 }
             }
         }
@@ -696,10 +801,28 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         if (!layer || !layer.options['background']) {
             return null;
         }
+        const zoomOffset = layer.options['zoomOffset'];
+        const minZoom = layer.getMinZoom();
+        const zoomDiff = info.z - minZoom;
+        if (layer._isPyramidMode()) {
+            for (let z = info.z - 1; z >= minZoom; z--) {
+                const diff = info.z - z;
+                const scale = Math.pow(2, diff);
+                const x = Math.floor(info.x / scale);
+                const y = Math.floor(info.y / scale);
+                const id = layer._getTileId(x, y, z + zoomOffset, info.layer);
+                if (this.tileCache.has(id)) {
+                    const tile = this.tileCache.getAndRemove(id);
+                    if (this.isValidCachedTile(tile)) {
+                        this.tileCache.add(id, tile);
+                        return tile;
+                    }
+                }
+            }
+            return null;
+        }
         const sr = layer.getSpatialReference();
-        const d = sr.getZoomDirection(),
-            zoomOffset = layer.options['zoomOffset'],
-            zoomDiff = layer.options['backgroundZoomDiff'];
+        const d = sr.getZoomDirection();
         const res = info.res;
         const center = info.extent2d.getCenter(),
             prj = layer._project(map._pointToPrjAtRes(center, res));
@@ -718,15 +841,25 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         return null;
     }
 
+    isValidCachedTile(tile) {
+        return !!tile.image;
+    }
+
+    isTileComplete(/*tile*/) {
+        return true;
+    }
+
     _getLayerOfTile(layerId) {
         return this.layer.getChildLayer ? this.layer.getChildLayer(layerId) : this.layer;
     }
 
-    _getCachedTile(tileId) {
+    _getCachedTile(tileId, isParent) {
         const tilesInView = this.tilesInView;
         let cached = this.tileCache.getAndRemove(tileId);
         if (cached) {
-            tilesInView[tileId] = cached;
+            if (!isParent) {
+                tilesInView[tileId] = cached;
+            }
             const tilesLoading = this.tilesLoading;
             if (tilesLoading && tilesLoading[tileId]) {
                 tilesLoading[tileId].current = false;
@@ -736,6 +869,10 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
             }
         } else {
             cached = tilesInView[tileId];
+        }
+        if (cached) {
+            cached.current = true;
+            this.tileCache.add(tileId, cached);
         }
         return cached;
     }
@@ -748,11 +885,23 @@ class TileLayerCanvasRenderer extends CanvasRenderer {
         };
     }
 
-    getTileOpacity(tileImage) {
+    getTileOpacity(tileImage, tileInfo) {
+        let opacity = this._getTileFadingOpacity(tileImage);
+        if (this.layer.getChildLayer) {
+            // in GroupTileLayer
+            const childLayer = this.layer.getLayer(tileInfo.layer);
+            if (childLayer) {
+                opacity *= childLayer.options['opacity'];
+            }
+        }
+        return opacity;
+    }
+
+    _getTileFadingOpacity(tileImage) {
         if (!this.layer.options['fadeAnimation'] || !tileImage.loadTime) {
             return 1;
         }
-        return Math.min(1, (now() - tileImage.loadTime) / (1000 / 60 * 10));
+        return Math.min(1, (now() - tileImage.loadTime) / this.layer.options['fadeDuration']);
     }
 
     onRemove() {

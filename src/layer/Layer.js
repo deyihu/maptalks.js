@@ -168,6 +168,16 @@ class Layer extends JSONAble(Eventable(Renderable(Class))) {
         if (this._renderer) {
             this._renderer.setZIndex(zIndex);
         }
+        /**
+         * setzindex event.
+         *
+         * @event Layer#setzindex
+         * @type {Object}
+         * @property {String} type - setzindex
+         * @property {Layer} target    - the layer fires the event
+         * @property {Number} zIndex        - value of the zIndex
+         */
+        this.fire('setzindex', { zIndex });
         return this;
     }
 
@@ -214,6 +224,16 @@ class Layer extends JSONAble(Eventable(Renderable(Class))) {
      */
     setOpacity(op) {
         this.config('opacity', op);
+        /**
+        * setopacity event.
+        *
+        * @event Layer#setopacity
+        * @type {Object}
+        * @property {String} type - setopacity
+        * @property {Layer} target    - the layer fires the event
+        * @property {Number} opacity        - value of the opacity
+        */
+        this.fire('setopacity', { opacity: op });
         return this;
     }
 
@@ -302,6 +322,14 @@ class Layer extends JSONAble(Eventable(Renderable(Class))) {
                     this.fire('show');
                 });
             } else {
+                /**
+                * show event.
+                *
+                * @event Layer#show
+                * @type {Object}
+                * @property {String} type - show
+                * @property {Layer} target    - the layer fires the event
+                */
                 this.fire('show');
             }
         }
@@ -327,6 +355,14 @@ class Layer extends JSONAble(Eventable(Renderable(Class))) {
                     this.fire('hide');
                 });
             } else {
+                /**
+                 * hide event.
+                 *
+                 * @event Layer#hide
+                 * @type {Object}
+                 * @property {String} type - hide
+                 * @property {Layer} target    - the layer fires the event
+                 */
                 this.fire('hide');
             }
         }
@@ -487,6 +523,9 @@ class Layer extends JSONAble(Eventable(Renderable(Class))) {
             if (this._optionsHook && isFunction(this._optionsHook)) {
                 this._optionsHook(conf);
             }
+            if (this._silentConfig) {
+                return;
+            }
             const renderer = this.getRenderer();
             if (renderer && renderer.setToRedraw) {
                 renderer.setToRedraw();
@@ -609,7 +648,20 @@ Layer.prototype.fire = function (eventType, param) {
         param['target'] = this;
         this.map._onLayerEvent(param);
     }
-    return fire.apply(this, arguments);
+    fire.apply(this, arguments);
+    if (['show', 'hide'].indexOf(eventType) > -1) {
+        /**
+        * visiblechange event.
+        *
+        * @event Layer#visiblechange
+        * @type {Object}
+        * @property {String} type - visiblechange
+        * @property {Layer} target    - the layer fires the event
+        * @property {Boolean} visible        - value of visible
+       */
+        this.fire('visiblechange', Object.assign({}, param, { visible: this.options.visible }));
+    }
+    return this;
 };
 
 export default Layer;

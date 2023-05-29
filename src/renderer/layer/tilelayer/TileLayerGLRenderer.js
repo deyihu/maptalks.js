@@ -38,13 +38,11 @@ class TileLayerGLRenderer extends ImageGLRenderable(TileLayerCanvasRenderer) {
     onDrawTileStart(context, parentContext) {
         const gl = this.gl;
         gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.ALWAYS);
+        gl.depthFunc(gl.LEQUAL);
         gl.enable(gl.POLYGON_OFFSET_FILL);
         gl.enable(gl.STENCIL_TEST);
         gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
-        // for (let i = 0; i<8; i++) {
-        //     gl.disableVertexAttribArray(i);
-        // }
+
         const depthMask = isNil(this.layer.options['depthMask']) || !!this.layer.options['depthMask'];
         gl.depthMask(depthMask);
         if (parentContext && parentContext.renderTarget) {
@@ -92,7 +90,7 @@ class TileLayerGLRenderer extends ImageGLRenderable(TileLayerCanvasRenderer) {
         const point = TILE_POINT.set(extent2d.xmin - offset[0], tileInfo.extent2d.ymax - offset[1]);
         const x = point.x * scale,
             y = point.y * scale;
-        const opacity = this.getTileOpacity(tileImage);
+        const opacity = this.getTileOpacity(tileImage, tileInfo);
         let debugInfo = null;
         if (this.layer.options['debug']) {
             debugInfo =  this.getDebugInfo(tileInfo.id);
@@ -100,11 +98,11 @@ class TileLayerGLRenderer extends ImageGLRenderable(TileLayerCanvasRenderer) {
         const gl = this.gl;
         gl.stencilFunc(gl.LEQUAL, Math.abs(this.getCurrentTileZoom() - tileInfo.z), 0xFF);
         const layerPolygonOffset = this.layer.getPolygonOffset();
-        const polygonOffset = this.tilesInView[tileInfo.id] ? layerPolygonOffset - 1 : layerPolygonOffset;
+        const polygonOffset = this.drawingCurrentTiles ? -layerPolygonOffset - 1 : -layerPolygonOffset;
         gl.polygonOffset(polygonOffset, polygonOffset);
 
         this.drawGLImage(tileImage, x, y, w, h, scale, opacity, debugInfo);
-        if (opacity < 1) {
+        if (this._getTileFadingOpacity(tileImage) < 1) {
             this.setToRedraw();
         } else {
             this.setCanvasUpdated();

@@ -45,6 +45,7 @@ Map.include(/** @lends Map.prototype */{
      * @return {Map}         this
      */
     animateTo(view, options = {}, step) {
+        view = extend({}, this.getView(), view);
         // this._stopAnim(this._animPlayer);
         if (isFunction(options)) {
             step = options;
@@ -248,6 +249,7 @@ Map.include(/** @lends Map.prototype */{
         //
         // Where applicable, local variable documentation begins with the associated variable or
         // function in van Wijk (2003).
+        view = extend({}, this.getView(), view);
 
         if (this._animPlayer) {
             if (this._isInternalAnimation) {
@@ -490,10 +492,11 @@ Map.include(/** @lends Map.prototype */{
             this.onMoveEnd(event);
         }
         if (!isNil(props['zoom'])) {
+            // remove origin in onZoomEnd, because center may be updated during animation but zoomOrigin here may reset center to the center value when starting animation
             if (player._interupted) {
-                this.onZoomEnd(this.getZoom(), zoomOrigin);
+                this.onZoomEnd(this.getZoom());
             } else if (!options['wheelZoom']) {
-                this.onZoomEnd(props['zoom'][1], zoomOrigin);
+                this.onZoomEnd(props['zoom'][1]);
             } else {
                 this.onZooming(props['zoom'][1], zoomOrigin);
             }

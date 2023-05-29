@@ -26,6 +26,7 @@ import SpatialReference from './spatial-reference/SpatialReference';
 import { computeDomPosition } from '../core/util/dom';
 
 const TEMP_COORD = new Coordinate(0, 0);
+const TEMP_POINT = new Point(0, 0);
 const REDRAW_OPTIONS_PROPERTIES = ['centerCross', 'fog', 'fogColor', 'debugSky'];
 /**
  * @property {Object} options                                   - map's options, options must be updated by config method:<br> map.config('zoomAnimation', false);
@@ -470,19 +471,33 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
             return this._center;
         }
         const projection = this.getProjection();
-        return projection.unproject(this._prjCenter);
+        const center = projection.unproject(this._prjCenter);
+        center.x = Math.round(center.x * 1E8) / 1E8;
+        center.y = Math.round(center.y * 1E8) / 1E8;
+        if (this.centerAltitude) {
+            center.z = this.centerAltitude;
+        }
+        return center;
     }
 
     /**
      * Set a new center to the map.
      * @param {Coordinate} center
+     * @param  {Object} [padding]
+     * @param  {Number} [padding.paddingLeft] - Sets the amount of padding in the left of a map container
+     * @param  {Number} [padding.paddingTop] - Sets the amount of padding in the top of a map container
+     * @param  {Number} [padding.paddingRight] - Sets the amount of padding in the right of a map container
+     * @param  {Number} [padding.paddingBottom] - Sets the amount of padding in the bottom of a map container
      * @return {Map} this
      */
-    setCenter(center) {
+    setCenter(center, padding) {
         if (!center) {
             return this;
         }
         center = new Coordinate(center);
+        if (padding) {
+            center = this._getCenterByPadding(center, this.getZoom(), padding);
+        }
         const projection = this.getProjection();
         const pcenter = projection.project(center);
         if (!this._verifyExtent(pcenter)) {
@@ -849,14 +864,36 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
         return this;
     }
 
-
+    /**
+     * Get the padding Size
+     * @param  {Object} options
+     * @param  {Number} [options.paddingLeft] - Sets the amount of padding in the left of a map container
+     * @param  {Number} [options.paddingTop] - Sets the amount of padding in the top of a map container
+     * @param  {Number} [options.paddingRight] - Sets the amount of padding in the right of a map container
+     * @param  {Number} [options.paddingBottom] - Sets the amount of padding in the bottom of a map container
+     * @returns {Object|null}
+     */
+    _getPaddingSize(options = {}) {
+        if (options['paddingLeft'] || options['paddingTop'] || options['paddingRight'] || options['paddingBottom']) {
+            return {
+                width: (options['paddingLeft'] || 0) + (options['paddingRight'] || 0),
+                height: (options['paddingTop'] || 0) + (options['paddingBottom'] || 0)
+            };
+        }
+        return null;
+    }
     /**
      * Caculate the zoom level that contains the given extent with the maximum zoom level possible.
      * @param {Extent} extent
      * @param  {Boolean} isFraction - can return fractional zoom
+     * @param  {Object} [padding] [padding] - padding
+     * @param  {Object} [padding.paddingLeft] - Sets the amount of padding in the left of a map container
+     * @param  {Object} [padding.paddingTop] - Sets the amount of padding in the top of a map container
+     * @param  {Object} [padding.paddingRight] - Sets the amount of padding in the right of a map container
+     * @param  {Object} [padding.paddingBottom] - Sets the amount of padding in the bottom of a map container
      * @return {Number} zoom fit for scale starting from fromZoom
      */
-    getFitZoom(extent, isFraction) {
+    getFitZoom(extent, isFraction, padding) {
         if (!extent || !(extent instanceof Extent)) {
             return this._zoomLevel;
         }
@@ -864,7 +901,14 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
         if (extent['xmin'] === extent['xmax'] && extent['ymin'] === extent['ymax']) {
             return this.getMaxZoom();
         }
-        const size = this.getSize();
+        let size = this.getSize();
+        const paddingSize = this._getPaddingSize(padding);
+        if (paddingSize) {
+            size = {
+                width: size.width - (paddingSize.width || 0),
+                height: size.height - (paddingSize.height || 0)
+            };
+        }
         const containerExtent = extent.convertTo(p => this.coordToPoint(p));
         const w = containerExtent.getWidth(),
             h = containerExtent.getHeight();
@@ -935,9 +979,48 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
     }
 
     /**
+     * Get center by the padding.
+     * @private
+     * @param  {Coordinate} center
+     * @param  {Number} zoom
+     * @param  {Object} padding
+     * @param  {Number} [padding.paddingLeft] - Sets the amount of padding in the left of a map container
+     * @param  {Number} [padding.paddingTop] - Sets the amount of padding in the top of a map container
+     * @param  {Number} [padding.paddingRight] - Sets the amount of padding in the right of a map container
+     * @param  {Number} [padding.paddingBottom] - Sets the amount of padding in the bottom of a map container
+     * @return {Coordinate}
+     */
+    _getCenterByPadding(center, zoom, padding = {}) {
+        const point = this.coordinateToPoint(center, zoom);
+        const { paddingLeft = 0, paddingRight = 0, paddingTop = 0, paddingBottom = 0 } = padding;
+        let pX = 0;
+        let pY = 0;
+        if (paddingLeft || paddingRight) {
+            pX = (paddingRight - paddingLeft) / 2;
+        }
+        if (paddingTop || paddingBottom) {
+            pY = (paddingTop - paddingBottom) / 2;
+        }
+        const newPoint = new Point({
+            x: point.x + pX,
+            y: point.y + pY
+        });
+        return this.pointToCoordinate(newPoint, zoom);
+    }
+
+    /**
      * Set the map to be fit for the given extent with the max zoom level possible.
      * @param  {Extent} extent - extent
      * @param  {Number} zoomOffset - zoom offset
+     * @param  {Object} [options={}] - options
+     * @param  {Object} [options.animation]
+     * @param  {Object} [options.duration]
+     * @param  {Object} [options.zoomAnimationDuration]
+     * @param  {Object} [options.easing='out']
+     * @param  {Number} [options.paddingLeft] - Sets the amount of padding in the left of a map container
+     * @param  {Number} [options.paddingTop] - Sets the amount of padding in the top of a map container
+     * @param  {Number} [options.paddingRight] - Sets the amount of padding in the right of a map container
+     * @param  {Number} [options.paddingBottom] - Sets the amount of padding in the bottom of a map container
      * @return {Map} - this
      */
     fitExtent(extent, zoomOffset, options = {}, step) {
@@ -945,8 +1028,11 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
             return this;
         }
         extent = new Extent(extent, this.getProjection());
-        const zoom = this.getFitZoom(extent) + (zoomOffset || 0);
-        const center = extent.getCenter();
+        const zoom = this.getFitZoom(extent, false, options) + (zoomOffset || 0);
+        let center = extent.getCenter();
+        if (this._getPaddingSize(options)) {
+            center = this._getCenterByPadding(center, zoom, options);
+        }
         if (typeof (options['animation']) === 'undefined' || options['animation'])
             return this._animateTo({
                 center,
@@ -1574,6 +1660,11 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
 
     onMoveEnd(param) {
         this._moving = false;
+        if (!this._suppressRecenter) {
+            this._recenterOnTerrain();
+        }
+
+
         this._trySetCursor('default');
         /**
          * moveend event
@@ -1964,7 +2055,7 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
     }
 
     _setPrjCoordAtContainerPoint(coordinate, point) {
-        if (point.x === this.width / 2 && point.y === this.height / 2) {
+        if (!this.centerAltitude && point.x === this.width / 2 && point.y === this.height / 2) {
             return this;
         }
         const t = this._containerPointToPoint(point)._sub(this._prjToPoint(this._getPrjCenter()));
@@ -1994,10 +2085,10 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
      * @returns {Coordinate} the new projected center.
      */
     _offsetCenterByPixel(pixel) {
-        const pos = new Point(this.width / 2 - pixel.x, this.height / 2 - pixel.y);
-        const pCenter = this._containerPointToPrj(pos);
-        this._setPrjCenter(pCenter);
-        return pCenter;
+        const pos = TEMP_POINT.set(this.width / 2 - pixel.x, this.height / 2 - pixel.y);
+        const coord = this._containerPointToPrj(pos, TEMP_COORD);
+        const containerCenter = TEMP_POINT.set(this.width / 2, this.height / 2);
+        this._setPrjCoordAtContainerPoint(coord, containerCenter);
     }
 
     /**
@@ -2337,7 +2428,7 @@ Map.include(/** @lends Map.prototype */{
      * Convert a geographical coordinate to the container point. <br>
      * Batch conversion for better performance <br>
      *  A container point is a point relative to map container's top-left corner. <br>
-     * @param {Coordinate[]}                - coordinates
+     * @param  {Coordinate[]} Coordinate - coordinates
      * @param  {Number} [zoom=undefined]  - zoom level
      * @return {Point[]}
      * @function
@@ -2369,7 +2460,7 @@ Map.include(/** @lends Map.prototype */{
                 const pCoordinate = projection.project(coordinates[i], prjOut);
                 let point = transformation.transform(pCoordinate, resolution);
                 point = point._multi(res);
-                this._toContainerPoint(point, isTransforming, res, 0, centerPoint);
+                this._toContainerPoint(point, isTransforming, coordinates[i].z, centerPoint);
                 pts.push(point);
             }
             return pts;
@@ -2524,6 +2615,8 @@ Map.include(/** @lends Map.prototype */{
     pixelToDistance: function () {
         const COORD0 = new Coordinate(0, 0);
         const COORD1 = new Coordinate(0, 0);
+        const TARGET0 = new Coordinate(0, 0);
+        const TARGET1 = new Coordinate(0, 0);
         return function (width, height) {
             const projection = this.getProjection();
             if (!projection) {
@@ -2531,9 +2624,12 @@ Map.include(/** @lends Map.prototype */{
             }
             const fullExt = this.getFullExtent();
             const d = fullExt['top'] > fullExt['bottom'] ? -1 : 1;
-            const target = COORD0.set(this.width / 2 + width, this.height / 2 + d * height);
-            const coord = this.containerPointToCoord(target, COORD1);
-            return projection.measureLength(this.getCenter(), coord);
+            const coord0 = COORD0.set(this.width / 2, this.height / 2);
+            const coord1 = COORD1.set(this.width / 2 + width, this.height / 2 + d * height);
+            // 考虑高度海拔后，容器中心点的坐标就不一定是center了
+            const target0 = this.containerPointToCoord(coord0, TARGET0);
+            const target1 = this.containerPointToCoord(coord1, TARGET1);
+            return projection.measureLength(target0, target1);
         };
     }(),
 

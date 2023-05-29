@@ -381,6 +381,7 @@ class OverlayLayer extends Layer {
             renderer.onGeometryRemove(old);
             if (renderer.clearImageData) {
                 renderer.clearImageData();
+                delete renderer._lastGeosToDraw;
             }
         }
         this._clearing = false;
