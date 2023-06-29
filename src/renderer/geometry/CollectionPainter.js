@@ -174,4 +174,5 @@ export default class CollectionPainter extends Class {
         });
         return result;
     }
+
 }
