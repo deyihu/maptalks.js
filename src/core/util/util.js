@@ -482,24 +482,6 @@ export function getPointsResultPts(points = [], ptKey = '_pt') {
     return resultPoints;
 }
 
-export function containerPointInMapView(containerPoint, mapSize) {
-    return containerPoint && mapSize && containerPoint.x >= 0 && containerPoint.y >= 0 &&
-        containerPoint.x <= mapSize.width && containerPoint.y <= mapSize.height;
-}
-
-export function containerPointOutContainerBBox(containerPoint, containerBBox) {
-    if (!containerBBox || !containerPoint) {
-        return false;
-    }
-    const { minx, miny, maxx, maxy } = containerBBox;
-    const bboxValidate = Math.abs(minx) !== Infinity && Math.abs(miny) !== Infinity &&
-        Math.abs(maxx) !== Infinity && Math.abs(maxy) !== Infinity;
-    const lineWidth = containerBBox.lineWidth || 1;
-    const { x, y } = containerPoint;
-    return bboxValidate && (x < minx - lineWidth || x > maxx + lineWidth ||
-        y < miny - lineWidth || y > maxy + lineWidth);
-}
-
 // let BITMAP_CTX;
 // if (Browser.decodeImageInWorker) {
 //     const canvas = document.createElement('canvas');
