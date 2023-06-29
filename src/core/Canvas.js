@@ -14,6 +14,7 @@ import Browser from './Browser';
 import Point from '../geo/Point';
 import { getFont, getAlignPoint } from './util/strings';
 import Extent from '../geo/Extent';
+import { BBOX_TEMP, resetBBOX, setBBOX } from './util/bbox';
 
 const DEFAULT_STROKE_COLOR = '#000';
 const DEFAULT_FILL_COLOR = 'rgba(255,255,255,0)';
@@ -315,7 +316,7 @@ const Canvas = {
     },
 
     text(ctx, text, pt, style, textDesc) {
-        Canvas._textOnMultiRow(ctx, textDesc['rows'], style, pt, textDesc['size'], textDesc['rawSize']);
+        return Canvas._textOnMultiRow(ctx, textDesc['rows'], style, pt, textDesc['size'], textDesc['rawSize']);
     },
 
     _textOnMultiRow(ctx, texts, style, point, splitTextSize, textSize) {
@@ -369,10 +370,15 @@ const Canvas = {
                 ctx.fillStyle = fillStyle;
             }
         }
+        resetBBOX(BBOX_TEMP);
         for (let i = 0, len = texts.length; i < len; i++) {
             text = texts[i]['text'];
             rowAlign = getAlignPoint(texts[i]['size'], style['textHorizontalAlignment'], style['textVerticalAlignment']);
-            Canvas._textOnLine(ctx, text, basePoint.add(rowAlign.x, i * lineHeight), style['textHaloRadius'], style['textHaloFill'], style['textHaloOpacity']);
+            const point = basePoint.add(rowAlign.x, i * lineHeight);
+            Canvas._textOnLine(ctx, text, point, style['textHaloRadius'], style['textHaloFill'], style['textHaloOpacity']);
+            const textSize = texts[i].size;
+            const minx = point.x, miny = point.y, maxx = minx + textSize.width, maxy = miny + textSize.height;
+            setBBOX(BBOX_TEMP, minx, miny, maxx, maxy);
             if (maxHeight > 0) {
                 height += lineHeight;
                 if (height + textSize['height'] >= maxHeight) {
@@ -380,6 +386,7 @@ const Canvas = {
                 }
             }
         }
+        return BBOX_TEMP;
     },
 
     _textOnLine(ctx, text, pt, textHaloRadius, textHaloFill, textHaloAlpha) {

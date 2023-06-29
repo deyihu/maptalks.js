@@ -179,12 +179,20 @@ class VectorLayer extends OverlayLayer {
             if (!geo || !geo.isVisible() || !painter || !geo.options['interactive']) {
                 continue;
             }
-            // bbox not contains mousepoint
-            const isPoly = geo._isPoly();
-            const isOnlyStrokeAndFillSymbol = painter._isOnlyStrokeAndFillSymbol && painter._isOnlyStrokeAndFillSymbol();
-            const polyAndIsOnlyStrokeAndFillSymbol = isPoly && isOnlyStrokeAndFillSymbol;
-            if (isInMapView && polyAndIsOnlyStrokeAndFillSymbol && painter._containerBbox) {
-                if (containerPointOutContainerBBox(cp, painter._containerBbox)) {
+            const bbox = painter.getRenderBBOX && painter.getRenderBBOX();
+            if (bbox) {
+                const { x, y } = cp;
+                if (x < bbox[0] || y < bbox[1] || x > bbox[2] || y > bbox[3]) {
+                    continue;
+                }
+            }
+            if (!(geo instanceof LineString) || (!geo._getArrowStyle() && !(geo instanceof Curve))) {
+                // Except for LineString with arrows or curves
+                let extent = geo.getContainerExtent(TEMP_EXTENT);
+                if (tolerance) {
+                    extent = extent._expand(tolerance);
+                }
+                if (!extent || !extent.contains(cp)) {
                     continue;
                 }
             }
