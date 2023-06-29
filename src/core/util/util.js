@@ -482,6 +482,7 @@ export function getPointsResultPts(points = [], ptKey = '_pt') {
     return resultPoints;
 }
 
+
 // let BITMAP_CTX;
 // if (Browser.decodeImageInWorker) {
 //     const canvas = document.createElement('canvas');
