@@ -104,10 +104,6 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         if (map.isInteracting() && this.layer.options['enableAltitude']) {
             return true;
         }
-        const layer = this.layer;
-        if (layer && layer._isShareCanvas()) {
-            return true;
-        }
         // don't redraw when map is zooming without pitch and layer doesn't have any point symbolizer.
         if (map.isZooming() && !map.isRotating() && !map.getPitch() && !this._hasPoint && this.layer.constructor === VectorLayer) {
             return false;
