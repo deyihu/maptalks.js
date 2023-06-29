@@ -1,6 +1,5 @@
 import Class from '../../core/Class';
 import PointExtent from '../../geo/PointExtent';
-import { StrokeAndFillSymbolizer } from './symbolizers';
 import { getDefaultBBOX, resetBBOX, setBBOX, validateBBOX } from '../../core/util/bbox';
 
 const TEMP_EXTENT = new PointExtent();
@@ -175,14 +174,4 @@ export default class CollectionPainter extends Class {
         });
         return result;
     }
-
-    _isOnlyStrokeAndFillSymbol() {
-        const geos = this.geometry.getGeometries();
-        if (geos.length) {
-            const painter = geos[0]._getPainter();
-            return painter.symbolizers.length === 1 && painter.symbolizers[0] instanceof StrokeAndFillSymbolizer;
-        }
-        return false;
-    }
-
 }

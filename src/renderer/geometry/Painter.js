@@ -384,18 +384,11 @@ class Painter extends Class {
             }
         }
         //cache geometry bbox
-        if (!this._containerBbox) {
-            this._containerBbox = { ...TEMP_BBOX };
-        }
-        if (!this.isHitTesting()) {
-            //is StrokeAndFillSymbolizer
-            if (Array.isArray(points[0])) {
-                this._containerBbox.minx = minx;
-                this._containerBbox.miny = miny;
-                this._containerBbox.maxx = maxx;
-                this._containerBbox.maxy = maxy;
-            }
-        }
+        TEMP_BBOX.minx = minx;
+        TEMP_BBOX.miny = miny;
+        TEMP_BBOX.maxx = maxx;
+        TEMP_BBOX.maxy = maxy;
+        this._containerBbox = TEMP_BBOX;
         return cPoints;
     }
 
@@ -974,10 +967,6 @@ class Painter extends Class {
     }
 
     _afterPaint() {
-    }
-
-    _isOnlyStrokeAndFillSymbol() {
-        return this.symbolizers.length === 1 && this.symbolizers[0] instanceof Symbolizers.StrokeAndFillSymbolizer;
     }
 }
 
