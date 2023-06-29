@@ -393,7 +393,6 @@ class Painter extends Class {
     }
 
     _clip(points, altitude) {
-        this._geometryWithView = false;
         // linestring polygon clip
         if (isNumber(altitude) && altitude !== 0) {
             return {
@@ -445,7 +444,6 @@ class Painter extends Class {
         const e = this.get2DExtent(null, TEMP_CLIP_EXTENT1);
         let clipPoints = points;
         if (e.within(extent2D)) {
-            this._geometryWithView = true;
             // if (this.geometry.getJSONType() === 'LineString') {
             //     // clip line with altitude
             //     return this._clipLineByAlt(clipPoints, altitude);
@@ -609,12 +607,6 @@ class Painter extends Class {
                 this._prepareShadow(ctx, this.symbolizers[i].symbol);
             }
             this.symbolizers[i].symbolize.apply(this.symbolizers[i], contexts);
-            if (this.symbolizers.length === 1 && this._containerBbox) {
-                if (this._containerBbox.lineWidth === undefined) {
-                    this._containerBbox.lineWidth = 1;
-                }
-                this._containerBbox.lineWidth = Math.max(this._containerBbox.lineWidth, this.symbolizers[i].style.lineWidth || 1);
-            }
         }
         this._afterPaint();
         this._painted = true;
