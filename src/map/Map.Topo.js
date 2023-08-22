@@ -1,5 +1,5 @@
 import { INTERNAL_LAYER_PREFIX } from '../core/Constants';
-import { isString, isArrayHasData, pushIn } from '../core/util';
+import { isNil, isString, isArrayHasData, pushIn, isFunction } from '../core/util';
 import Coordinate from '../geo/Coordinate';
 import Point from '../geo/Point';
 import Map from './Map';
@@ -95,11 +95,17 @@ Map.include(/** @lends Map.prototype */ {
      *  });
      */
     identifyAtPoint: function (opts, callback) {
+        const isMapGeometryEvent = opts.includeInternals;
+        const tolerance = opts.tolerance;
         opts = opts || {};
         const containerPoint = new Point(opts['containerPoint']);
         const coordinate = this.containerPointToCoord(containerPoint);
         return this._identify(opts, callback, layer => {
             let result;
+            if (isMapGeometryEvent && !isNil(layer.options.geometryEventTolerance)) {
+                opts.tolerance = opts.tolerance || 0;
+                opts.tolerance += layer.options.geometryEventTolerance;
+            }
             if (layer.identifyAtPoint) {
                 result = layer.identifyAtPoint(containerPoint, opts);
             } else if (coordinate && layer.identify) {
@@ -107,9 +113,25 @@ Map.include(/** @lends Map.prototype */ {
             } else {
                 result = [];
             }
+            if (isMapGeometryEvent) {
+                if (isNil(tolerance)) {
+                    delete opts.tolerance;
+                } else {
+                    opts.tolerance = tolerance;
+                }
+            }
             //fire layer identify empty event
             if ((!result || !result.length)) {
                 layer.fire('identifyempty', opts);
+                //such as GroupGLLayer
+                if (layer.getLayers && isFunction(layer.getLayers)) {
+                    const layers = (layer.getLayers() || []).filter(childLayer => {
+                        return childLayer;
+                    });
+                    layers.forEach(childLayer => {
+                        childLayer.fire('identifyempty', opts);
+                    });
+                }
             }
             return result;
         });

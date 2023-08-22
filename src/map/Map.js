@@ -61,7 +61,8 @@ const REDRAW_OPTIONS_PROPERTIES = ['centerCross', 'fog', 'fogColor', 'debugSky']
  * @property {Boolean} [options.dragPan=true]                           - if true, map can be dragged to pan.
  * @property {Boolean} [options.dragRotate=true]                        - default true. If true, map can be dragged to rotate by right click or ctrl + left click.
  * @property {Boolean} [options.dragPitch=true]                         - default true. If true, map can be dragged to pitch by right click or ctrl + left click.
- * @property {Boolean} [options.dragRotatePitch=true]                  - if true, map is dragged to pitch and rotate at the same time.
+ * @property {Boolean} [options.dragRotatePitch=true]                   - if true, map is dragged to pitch and rotate at the same time.
+ * @property {Number}  [options.switchDragButton=false]                 - switch to use left click (or touch on mobile) to rotate map and right click to move map.
  * @property {Boolean} [options.touchGesture=true]                      - whether to allow map to zoom/rotate/tilt by two finger touch gestures.
  * @property {Boolean} [options.touchZoom=true]                         - whether to allow map to zoom by touch pinch.
  * @property {Boolean} [options.touchRotate=true]                       - whether to allow map to rotate by touch pinch.
@@ -144,7 +145,9 @@ const options = {
     'preventWheelScroll': true,
     'preventTouch': true,
     //for plugin layer,such as threelayer
-    'supportPluginEvent': true
+    'supportPluginEvent': true,
+
+    'switchDragButton': false
 };
 
 /**
@@ -1023,6 +1026,7 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
      * @param  {Number} [options.paddingTop] - Sets the amount of padding in the top of a map container
      * @param  {Number} [options.paddingRight] - Sets the amount of padding in the right of a map container
      * @param  {Number} [options.paddingBottom] - Sets the amount of padding in the bottom of a map container
+	 * @param  {Boolean} [options.isFraction=false] - can locate to fractional zoom
      * @return {Map} - this
      */
     fitExtent(extent, zoomOffset, options = {}, step) {
@@ -1030,7 +1034,7 @@ class Map extends Handlerable(Eventable(Renderable(Class))) {
             return this;
         }
         extent = new Extent(extent, this.getProjection());
-        const zoom = this.getFitZoom(extent, false, options) + (zoomOffset || 0);
+        const zoom = this.getFitZoom(extent, options.isFraction || false, options) + (zoomOffset || 0);
         let center = extent.getCenter();
         if (this._getPaddingSize(options)) {
             center = this._getCenterByPadding(center, zoom, options);

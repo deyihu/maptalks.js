@@ -6,7 +6,10 @@ describe('Geometry.Events', function () {
     var layer;
 
     beforeEach(function () {
-        var setups = COMMON_CREATE_MAP(center);
+        var setups = COMMON_CREATE_MAP(center, null, {
+            width: 800,
+            height: 600
+        });
         container = setups.container;
         map = setups.map;
         map.config('onlyVisibleGeometryEvents', false);
@@ -31,12 +34,12 @@ describe('Geometry.Events', function () {
         var spy2 = sinon.spy();
         map.on('click', spy2);
         happen.mousedown(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         happen.click(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         expect(spy.called).to.be.ok();
         expect(spy2.called).to.be.ok();
@@ -57,8 +60,8 @@ describe('Geometry.Events', function () {
         var spy = sinon.spy();
         map.on('click', spy);
         happen.click(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         expect(circleClicked).to.be.ok();
         expect(spy.called).not.to.be.ok();
@@ -73,8 +76,8 @@ describe('Geometry.Events', function () {
             expect(param.type).to.be.eql('mousemove');
             circle.off('mousemove', onMouseMove);
             happen.mousemove(eventContainer, {
-                'clientX':point.x + 100,
-                'clientY':point.y + 100
+                'clientX': point.x + 100,
+                'clientY': point.y + 100
             });
         }
         circle.on('mousemove', onMouseMove);
@@ -84,8 +87,8 @@ describe('Geometry.Events', function () {
         });
 
         happen.mousemove(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
     });
 
@@ -110,13 +113,13 @@ describe('Geometry.Events', function () {
         circle.on('mouseover', onMouseOver);
         circle.on('mouseenter', onMouseOver);
         happen.mousemove(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         setTimeout(function () {
             happen.mousemove(eventContainer, {
-                'clientX':point.x,
-                'clientY':point.y
+                'clientX': point.x,
+                'clientY': point.y
             });
         }, 300);
 
@@ -131,14 +134,14 @@ describe('Geometry.Events', function () {
         circle.on('click', spy);
 
         happen.click(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         expect(spy.called).to.be.ok();
         spy.reset();
         happen.click(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         expect(spy.called).to.be.ok();
     });
@@ -152,13 +155,13 @@ describe('Geometry.Events', function () {
         circle.on('click', spy);
 
         happen.mousedown(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         setTimeout(function () {
             happen.click(eventContainer, {
-                'clientX':point.x,
-                'clientY':point.y
+                'clientX': point.x,
+                'clientY': point.y
             });
             expect(spy.called).not.to.be.ok();
             done();
@@ -174,17 +177,17 @@ describe('Geometry.Events', function () {
         circle.on('click', spy);
 
         happen.once(eventContainer, {
-            'type' : 'touchstart',
-            'touches' : [{
-                'clientX':point.x,
-                'clientY':point.y
+            'type': 'touchstart',
+            'touches': [{
+                'clientX': point.x,
+                'clientY': point.y
             }]
         });
         happen.once(eventContainer, {
-            'type' : 'touchend',
-            'touches' : [{
-                'clientX':point.x,
-                'clientY':point.y
+            'type': 'touchend',
+            'touches': [{
+                'clientX': point.x,
+                'clientY': point.y
             }]
         });
         expect(spy.called).to.be.ok();
@@ -199,14 +202,14 @@ describe('Geometry.Events', function () {
         circle.once('click', spy);
 
         happen.click(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         expect(spy.called).to.be.ok();
         spy.reset();
         happen.click(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         expect(spy.called).not.to.be.ok();
     });
@@ -221,8 +224,8 @@ describe('Geometry.Events', function () {
         circle.on('click', spy);
 
         happen.click(eventContainer, {
-            'clientX':point.x,
-            'clientY':point.y
+            'clientX': point.x,
+            'clientY': point.y
         });
         expect(spy.called).not.to.be.ok();
     });
@@ -231,8 +234,8 @@ describe('Geometry.Events', function () {
         var circle = new maptalks.Marker(map.getCenter(), {
             'symbol': {
                 'markerType': 'circle',
-                'markerWidth': {stops: [[18, 0], [20, 30]]},
-                'markerHeight': {stops: [[18, 0], [20, 30]]},
+                'markerWidth': { stops: [[18, 0], [20, 30]] },
+                'markerHeight': { stops: [[18, 0], [20, 30]] },
             }
         });
         circle.addTo(layer);
@@ -242,8 +245,8 @@ describe('Geometry.Events', function () {
         circle.on('click', spy);
 
         happen.click(eventContainer, {
-            'clientX':point.x + 2,
-            'clientY':point.y
+            'clientX': point.x + 3,
+            'clientY': point.y
         });
         expect(spy.called).not.to.be.ok();
     });
@@ -252,8 +255,8 @@ describe('Geometry.Events', function () {
         var circle = new maptalks.Marker(map.getCenter(), {
             'symbol': {
                 'markerType': 'circle',
-                'markerWidth': {stops: [[10, 0], [20, 30]]},
-                'markerHeight': {stops: [[10, 0], [20, 30]]},
+                'markerWidth': { stops: [[10, 0], [20, 30]] },
+                'markerHeight': { stops: [[10, 0], [20, 30]] },
             }
         });
         circle.addTo(layer);
@@ -263,9 +266,131 @@ describe('Geometry.Events', function () {
         circle.on('click', spy);
 
         happen.click(eventContainer, {
-            'clientX':point.x + 1,
-            'clientY':point.y
+            'clientX': point.x + 1,
+            'clientY': point.y
         });
         expect(spy.called).to.be.ok();
+    });
+
+    it('#2027 Horizontal line', function () {
+        var center = map.getCenter();
+        var c1 = center.add(1, 0);
+        var line = new maptalks.LineString([center, c1]);
+        line.addTo(layer);
+        var domPosition = GET_PAGE_POSITION(container);
+        var point = map.coordinateToContainerPoint(center).add(domPosition);
+        var spy = sinon.spy();
+        line.on('click', spy);
+
+        happen.click(eventContainer, {
+            'clientX': point.x,
+            'clientY': point.y
+        });
+        expect(spy.called).to.be.ok();
+        spy.reset();
+        happen.click(eventContainer, {
+            'clientX': point.x,
+            'clientY': point.y
+        });
+        expect(spy.called).to.be.ok();
+    });
+
+    it('geometryEventTolerance', function () {
+        layer.config('geometryEventTolerance', 5);
+        var center = map.getCenter();
+        var c1 = center.add(1, 0);
+        var line = new maptalks.LineString([center, c1]);
+        line.addTo(layer);
+        var domPosition = GET_PAGE_POSITION(container);
+        var point = map.coordinateToContainerPoint(center).add(domPosition);
+        var spy = sinon.spy();
+        line.on('click', spy);
+
+        happen.click(eventContainer, {
+            'clientX': point.x,
+            'clientY': point.y + 3
+        });
+        expect(spy.called).to.be.ok();
+    });
+
+    it('marker rotation #2047', function (done) {
+        var center = map.getCenter();
+        const symbols = [
+            {
+                markerType: 'ellipse',
+                markerWidth: 40,
+                markerHeight: 40
+            },
+            {
+                markerFile: 'resources/infownd-close-hover.png',
+                markerWidth: 40,
+                markerHeight: 40
+            },
+            {
+                'markerType': 'path',
+                'markerPath': [{
+                    'path': 'M0 0h1024v1024H0z',
+                    'fill': '#DE3333'
+                }],
+                'markerPathWidth': 1024,
+                'markerPathHeight': 1024,
+                markerWidth: 40,
+                markerHeight: 40
+            }
+        ];
+        const rotations = [15, 45, 90, 100, 180, -15, -60, -90, -115, -135, -180];
+
+        const dxdys = [
+            {
+                markerDx: 0,
+                markerDy: 0
+            },
+            {
+                markerDx: Math.random() * 100,
+                markerDy: Math.random() * 100
+            },
+            {
+                markerDx: -Math.random() * 100,
+                markerDy: -Math.random() * 100
+            }
+        ];
+        const markers = [];
+        symbols.forEach(symbol => {
+            rotations.forEach(rotation => {
+                dxdys.forEach(dxdy => {
+                    const marker = new maptalks.Marker(center.copy(), {
+                        symbol: Object.assign({}, symbol, { markerRotation: rotation }, dxdy),
+                    });
+                    markers.push(marker);
+                });
+            });
+        });
+
+        var domPosition = GET_PAGE_POSITION(container);
+
+        function test() {
+            console.log('markers.length:', markers.length);
+            if (markers.length === 0) {
+                done();
+            } else {
+                const marker = markers[0];
+                layer.clear();
+                var spy = sinon.spy();
+                marker.on('click', spy);
+                setTimeout(() => {
+                    const center = marker.getContainerExtent().getCenter();
+                    var point = center.add(domPosition);
+                    happen.click(eventContainer, {
+                        'clientX': point.x,
+                        'clientY': point.y
+                    });
+                    expect(spy.called).to.be.ok();
+                    markers.splice(0, 1);
+                    test();
+                }, 50);
+                marker.addTo(layer);
+            }
+        }
+        test();
     });
 });

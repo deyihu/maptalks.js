@@ -14,6 +14,7 @@ import Class from '../core/Class';
 import Eventable from '../core/Eventable';
 import Size from '../geo/Size';
 import Geometry from '../geometry/Geometry';
+import Coordinate from '../geo/Coordinate';
 
 /**
  * @property {Object} options
@@ -33,6 +34,7 @@ import Geometry from '../geometry/Geometry';
  * @property {Number}  [options.collisionBufferSize=2]  - collision buffer size
  * @property {Number}  [options.collisionWeight=0]  - Collision weight, large priority collision
  * @property {Boolean}  [options.collisionFadeIn=false]  - Collision fade in animation
+ * @property {Number}  [options.zIndex=0]  - dom zindex
  * @memberOf ui.UIComponent
  * @instance
  */
@@ -54,7 +56,8 @@ const options = {
     'collision': false,
     'collisionBufferSize': 2,
     'collisionWeight': 0,
-    'collisionFadeIn': false
+    'collisionFadeIn': false,
+    'zIndex': 0
 };
 
 /**
@@ -182,6 +185,9 @@ class UIComponent extends Eventable(Class) {
         this.options['visible'] = true;
 
         coordinate = coordinate || this._coordinate || this._owner.getCenter();
+        if (!(coordinate instanceof Coordinate)) {
+            coordinate = new Coordinate(coordinate);
+        }
 
         const visible = this.isVisible();
 
@@ -206,6 +212,7 @@ class UIComponent extends Eventable(Class) {
         const dom = this.__uiDOM = this.buildOn(map);
         dom['eventsPropagation'] = this.options['eventsPropagation'];
         this._observerDomSize(dom);
+        const zIndex = this.options.zIndex;
         if (!dom) {
             /**
              * showend event.
@@ -219,6 +226,7 @@ class UIComponent extends Eventable(Class) {
                 this.fire('showend');
             }
             this._collides();
+            this.setZIndex(zIndex);
             return this;
         }
 
@@ -295,6 +303,7 @@ class UIComponent extends Eventable(Class) {
                 this._autoPan();
             }, 32);
         }
+        this.setZIndex(zIndex);
         return this;
     }
 
@@ -419,8 +428,31 @@ class UIComponent extends Eventable(Class) {
         return this._owner;
     }
 
+    /**
+     * get Dom Node
+     * @returns {HTMLDivElement} dom|null
+     */
     getDOM() {
         return this.__uiDOM;
+    }
+
+    /**
+     * set Dom Node zIndex
+     *
+     */
+    setZIndex(zIndex) {
+        if (!isNumber(zIndex)) {
+            return this;
+        }
+        const dom = this.getDOM();
+        if (!dom) {
+            return this;
+        }
+        dom.style.zIndex = zIndex;
+        if (zIndex !== this.options.zIndex) {
+            this.options.zIndex = zIndex;
+        }
+        return this;
     }
 
     _roundPoint(point) {

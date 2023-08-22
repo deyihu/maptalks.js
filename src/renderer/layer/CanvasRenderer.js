@@ -41,7 +41,7 @@ class CanvasRenderer extends Class {
         this.layer = layer;
         this._painted = false;
         this._drawTime = 0;
-        if (Browser.decodeImageInWorker && (layer.options['renderer'] === 'gl' || !Browser.safari && !Browser.iosWeixin)) {
+        if (Browser.decodeImageInWorker && !Browser.safari && !Browser.iosWeixin) {
             this._resWorkerConn = new ResourceWorkerConnection();
         }
         this.setToRedraw();
@@ -83,7 +83,12 @@ class CanvasRenderer extends Class {
                          * @property {Layer} target    - layer
                          */
                         this.layer.fire('resourceload');
+                        const map = this.layer.getMap();
                         this.setToRedraw();
+                        map.getRenderer().callInNextFrame(() => {
+                            // sometimes renderer still fails to fetch loaded images, an additional frame will solved it
+                            this.setToRedraw();
+                        });
                     }
                 });
             } else {
@@ -778,14 +783,16 @@ class CanvasRenderer extends Class {
     }
 
     _promiseResource(url) {
+        const layer = this.layer;
         //当资源是{iconName}这样的模板时,url里关于资源的url会被替换的，比如{iconName} 会被替换为 url[0]= 真实的图片的名字
         let imgUrl = checkResourceValue(url, url.geo && url.geo.properties);
         delete url.geo;
         const me = this, resources = this.resources,
-            crossOrigin = this.layer.options['crossOrigin'];
-        const renderer = this.layer.options['renderer'] || '';
+            crossOrigin = layer.options['crossOrigin'];
+        const renderer = layer.options['renderer'] || '';
 
         const resKey = url[0];
+        const fetchInWorker = !isSVG(url[0]) && me._resWorkerConn && (layer.options['renderer'] !== 'canvas' || layer.options['decodeImageInWorker']);
 
         //cache image data to ResourceManager
         function addToGlobalCache(imgData) {
@@ -836,7 +843,7 @@ class CanvasRenderer extends Class {
                 copyBitMapForLayer(imgUrl, resolve);
                 return;
             }
-            if (!isSVG(imgUrl) && me._resWorkerConn) {
+            if (!isSVG(imgUrl) && fetchInWorker) {
                 const uri = getAbsoluteURL(imgUrl);
                 me._resWorkerConn.fetchImage(uri, (err, data) => {
                     if (err) {
