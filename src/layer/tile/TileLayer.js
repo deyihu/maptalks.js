@@ -86,6 +86,7 @@ class TileHashset {
  * @property {String}              [options.token=null]       - token to replace {token} in template http://foo/bar/{z}/{x}/{y}?token={token}
  * @property {Object}              [options.fetchOptions=object]       - fetch params,such as fetchOptions: { 'headers': { 'accept': '' } }, about accept value more info https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation/List_of_default_Accept_values
  * @property {Boolean}             [options.awareOfTerrain=true]       - if the tile layer is aware of terrain.
+ * @property {Number}             [options.bufferPixel=0.5]       - tile buffer size,the unit is pixel
  * @memberOf TileLayer
  * @instance
  */
@@ -144,9 +145,11 @@ const options = {
     'tileLimitPerFrame': 0,
 
     'tileStackStartDepth': 7,
-    'tileStackDepth': 3,
+    'tileStackDepth': 6,
 
-    'awareOfTerrain': true
+    'awareOfTerrain': true,
+    'bufferPixel': 0.5,
+    'mipmapTexture': true
 };
 
 const URL_PATTERN = /\{ *([\w_]+) *\}/g;
@@ -353,7 +356,7 @@ class TileLayer extends Layer {
             z = this._getTileZoom(map.getZoom());
         }
         const sr = this.getSpatialReference();
-        const maxZoom = Math.min(z, this.getMaxZoom(), this.options['maxAvailableZoom'] || Infinity);
+        const maxZoom = Math.min(z, this.getMaxZoom(), this.getMaxAvailableZoom() || Infinity);
         const projectionView = map.projViewMatrix;
         const fullExtent = this._getTileFullExtent();
 
@@ -442,18 +445,9 @@ class TileLayer extends Layer {
     }
 
     _splitNode(node, projectionView, queue, tiles, gridExtent, maxZoom, offset, parentRenderer, glRes) {
-        const zoomOffset = this.options['zoomOffset'];
-        const tileSystem = this._getTileConfig().tileSystem;
-        const scaleY = tileSystem.scale.y;
         const z = node.z + 1;
         const sr = this.getSpatialReference();
-        const { x, y, extent2d, idx, idy } = node;
-        const childScale = 2;
-        const width = extent2d.getWidth() / 2 * childScale;
-        const height = extent2d.getHeight() / 2 * childScale;
-        const minx = extent2d.xmin * childScale;
-        const maxy = extent2d.ymax * childScale;
-        const miny = extent2d.ymin * childScale;
+        const { idx, idy } = node;
 
         const renderer = parentRenderer || this.getRenderer();
 
@@ -464,8 +458,6 @@ class TileLayer extends Layer {
         for (let i = 0; i < 4; i++) {
             const dx = (i % 2);
             const dy = (i >> 1);
-            const childX = (x << 1) + dx;
-            const childY = (y << 1) + dy;
             const childIdx = (idx << 1) + dx;
             const childIdy = (idy << 1) + dy;
 
@@ -479,7 +471,6 @@ class TileLayer extends Layer {
                 node.children[i] = tileId;
             }
             const cached = renderer.isTileCachedOrLoading(tileId);
-            let extent;
             let childNode = cached && cached.info;
             if (!childNode) {
                 if (!this.tileInfoCache) {
@@ -487,32 +478,7 @@ class TileLayer extends Layer {
                 }
                 childNode = this.tileInfoCache.get(tileId);
                 if (!childNode) {
-                    if (scaleY < 0) {
-                        const nwx = minx + dx * width;
-                        const nwy = maxy - dy * height;
-                        // extent2d 是 node.z 级别上的 extent
-                        extent = new PointExtent(nwx, nwy - height, nwx + width, nwy);
-
-                    } else {
-                        const swx = minx + dx * width;
-                        const swy = miny + dy * height;
-                        extent = new PointExtent(swx, swy, swx + width, swy + height);
-                    }
-                    childNode = {
-                        x: childX,
-                        y: childY,
-                        idx: childIdx,
-                        idy: childIdy,
-                        z,
-                        extent2d: extent,
-                        error: node.error / 2,
-                        res,
-                        id: tileId,
-                        children: [],
-                        url: this.getTileUrl(childX, childY, z + zoomOffset),
-                        offset
-                    };
-                    this.tileInfoCache.add(tileId, childNode);
+                    childNode = this._createChildNode(node, dx, dy, offset, tileId);
                 }
                 if (parentRenderer) {
                     childNode['layer'] = this.getId();
@@ -545,7 +511,54 @@ class TileLayer extends Layer {
             queue.push(...children);
         }
 
+    }
 
+    _createChildNode(node, dx, dy, offset, tileId) {
+        const zoomOffset = this.options['zoomOffset'];
+        const { x, y, idx, idy, extent2d } = node;
+        const z = node.z + 1;
+        const childX = (x << 1) + dx;
+        const childY = (y << 1) + dy;
+        const childIdx = (idx << 1) + dx;
+        const childIdy = (idy << 1) + dy;
+        const childScale = 2;
+        const width = extent2d.getWidth() / 2 * childScale;
+        const height = extent2d.getHeight() / 2 * childScale;
+        const minx = extent2d.xmin * childScale;
+        const maxy = extent2d.ymax * childScale;
+        const miny = extent2d.ymin * childScale;
+        const tileSystem = this._getTileConfig().tileSystem;
+        const scaleY = tileSystem.scale.y;
+        tileId = tileId || this._getTileId(childIdx, childIdy, z);
+        let extent;
+        if (scaleY < 0) {
+            const nwx = minx + dx * width;
+            const nwy = maxy - dy * height;
+            // extent2d 是 node.z 级别上的 extent
+            extent = new PointExtent(nwx, nwy - height, nwx + width, nwy);
+
+        } else {
+            const swx = minx + dx * width;
+            const swy = miny + dy * height;
+            extent = new PointExtent(swx, swy, swx + width, swy + height);
+        }
+        const childNode = {
+            parent: node.id,
+            x: childX,
+            y: childY,
+            idx: childIdx,
+            idy: childIdy,
+            z,
+            extent2d: extent,
+            error: node.error / 2,
+            res: node.res / 2,
+            id: tileId,
+            children: [],
+            url: this.getTileUrl(childX, childY, z + zoomOffset),
+            offset
+        };
+        this.tileInfoCache.add(tileId, childNode);
+        return childNode;
     }
 
     _isTileVisible(node, projectionView, glScale, maxZoom, offset) {
@@ -863,7 +876,7 @@ class TileLayer extends Layer {
             const dz = Math.log(res1 / res0) * Math.LOG2E; // polyfill of Math.log2
             zoom += dz;
         }
-        const maxZoom = this.options['maxAvailableZoom'];
+        const maxZoom = this.getMaxAvailableZoom();
         if (!isNil(maxZoom) && zoom > maxZoom) {
             zoom = maxZoom;
         }
@@ -874,6 +887,15 @@ class TileLayer extends Layer {
         return zoom;
     }
 
+    /**
+     * Get tileLayer's max available zoom, either options['maxAvailableZoom'] or spatialReference's maxZoom
+     *
+     * @returns {Number}
+     **/
+    getMaxAvailableZoom() {
+        const sr = this.getSpatialReference();
+        return this.options['maxAvailableZoom'] || sr && sr.getMaxZoom();
+    }
 
     _getTiles(tileZoom, containerExtent, cascadeLevel, parentRenderer, ignoreMinZoom) {
         // rendWhenReady = false;
@@ -1184,16 +1206,20 @@ class TileLayer extends Layer {
         return tileInfo;
     }
 
-    _getTileOffset(z) {
+    _getTileOffset(...params) {
         // offset result can't be cached, as it varies with map's center.
         let offset = this.options['offset'];
         if (isFunction(offset)) {
-            offset = offset.call(this, z);
+            offset = offset.call(this, ...params);
         }
         if (isNumber(offset)) {
             offset = [offset, offset];
         }
         return offset || [0, 0];
+    }
+
+    getTileId(x, y, zoom, id) {
+        return this._getTileId(x, y, zoom, id);
     }
 
     _getTileId(x, y, zoom, id) {
@@ -1381,5 +1407,5 @@ function distanceToRect(min, max, xyz) {
 
 
 function sortingTiles(t0, t1) {
-    return t0.z - t1.z;
+    return t1.z - t0.z;
 }
