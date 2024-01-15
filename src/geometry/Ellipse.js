@@ -12,7 +12,7 @@ import Circle from './Circle';
  * @instance
  */
 const options = {
-    'numberOfShellPoints': 80
+    'numberOfShellPoints': 81
 };
 
 /**
@@ -88,15 +88,21 @@ class Ellipse extends CenterMixin(Polygon) {
         this.onShapeChanged();
         return this;
     }
-
     /**
      * Gets the shell of the ellipse as a polygon, number of the shell points is decided by [options.numberOfShellPoints]{@link Circle#options}
      * @return {Coordinate[]} - shell coordinates
      */
     getShell() {
+        if (this.isRotated()) {
+            return this.getRotatedShell();
+        }
+        return this._getShell();
+    }
+
+    _getShell() {
         const measurer = this._getMeasurer(),
             center = this.getCoordinates(),
-            numberOfPoints = this.options['numberOfShellPoints'],
+            numberOfPoints = this.options['numberOfShellPoints'] - 1,
             width = this.getWidth(),
             height = this.getHeight();
         const shell = [];
@@ -119,7 +125,13 @@ class Ellipse extends CenterMixin(Polygon) {
             vertex.z = center.z;
             shell.push(vertex);
         }
+        shell.push(shell[0].copy());
         return shell;
+    }
+
+    _getPrjShell() {
+        const shell = super._getPrjShell();
+        return this._rotatePrjCoordinates(shell);
     }
 
     /**
@@ -148,6 +160,9 @@ class Ellipse extends CenterMixin(Polygon) {
     }
 
     _computePrjExtent() {
+        if (this.isRotated()) {
+            return this._computeRotatedPrjExtent();
+        }
         return Circle.prototype._computePrjExtent.apply(this, arguments);
     }
 

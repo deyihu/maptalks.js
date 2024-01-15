@@ -7,6 +7,10 @@ import Layer from './Layer';
 import GeoJSON from '../geometry/GeoJSON';
 import { uuid } from '../core/uuid';
 
+function isGeometry(geo) {
+    return geo && (geo instanceof Geometry);
+}
+
 /**
  * @property {Boolean}  [options.drawImmediate=false] - (Only for layer rendered with [CanvasRenderer]{@link renderer.CanvasRenderer}) <br>
  *                                                    In default, for performance reason, layer will be drawn in a frame requested by RAF(RequestAnimationFrame).<br>
@@ -37,7 +41,7 @@ class OverlayLayer extends Layer {
 
     constructor(id, geometries, options) {
         id = id || uuid();
-        if (geometries && (!(geometries instanceof Geometry) && !Array.isArray(geometries) && GEOJSON_TYPES.indexOf(geometries.type) < 0)) {
+        if (geometries && (!isGeometry(geometries) && !Array.isArray(geometries) && GEOJSON_TYPES.indexOf(geometries.type) < 0)) {
             options = geometries;
             geometries = null;
         }
@@ -56,6 +60,30 @@ class OverlayLayer extends Layer {
             this._initType();
         }
     }
+
+    // isGeometryListening(types) {
+    //     if (!this._geoList) {
+    //         return false;
+    //     }
+    //     if (!Array.isArray(types)) {
+    //         types = [types];
+    //     }
+    //     for (let i = 0, l = this._geoList.length; i < l; i++) {
+    //         const geometry = this._geoList[i];
+    //         if (!geometry) {
+    //             continue;
+    //         }
+    //         if (geometry.options.cursor) {
+    //             return true;
+    //         }
+    //         for (let j = 0; j < types.length; j++) {
+    //             if (geometry.listens(types[j])) {
+    //                 return true;
+    //             }
+    //         }
+    //     }
+    //     return false;
+    // }
 
     /**
      * Get a geometry by its id
@@ -210,7 +238,7 @@ class OverlayLayer extends Layer {
             const last = arguments[count - 1];
             geometries = Array.prototype.slice.call(arguments, 0, count - 1);
             fitView = last;
-            if (last && isObject(last) && (('type' in last) || last instanceof Geometry)) {
+            if (last && isObject(last) && (('type' in last) || isGeometry(last))) {
                 geometries.push(last);
                 fitView = false;
             }
@@ -227,13 +255,13 @@ class OverlayLayer extends Layer {
         const geos = [];
         for (let i = 0, l = geometries.length; i < l; i++) {
             let geo = geometries[i];
-            if (!geo) {
+            if (!(geo && (GeoJSON._isGeoJSON(geo) || isGeometry(geo)))) {
                 throw new Error('Invalid geometry to add to layer(' + this.getId() + ') at index:' + i);
             }
             if (geo.getLayer && geo.getLayer() === this) {
                 continue;
             }
-            if (!(geo instanceof Geometry)) {
+            if (!isGeometry(geo)) {
                 geo = Geometry.fromJSON(geo);
                 if (Array.isArray(geo)) {
                     for (let ii = 0, ll = geo.length; ii < ll; ii++) {
@@ -241,6 +269,10 @@ class OverlayLayer extends Layer {
                         geos.push(geo[ii]);
                     }
                 }
+            }
+            // geojson to Geometry may be null
+            if (!geo) {
+                throw new Error('Invalid geometry to add to layer(' + this.getId() + ') at index:' + i);
             }
             if (!Array.isArray(geo)) {
                 this._add(geo, extent, i);
@@ -753,9 +785,16 @@ class OverlayLayer extends Layer {
         }
         const geos = this.getGeometries() || [];
         for (let i = 0, len = geos.length; i < len; i++) {
+            const geometry = geos[i];
+            if (!geometry) {
+                continue;
+            }
+            if (geometry.options.cursor) {
+                return true;
+            }
             for (let j = 0, len1 = eventTypes.length; j < len1; j++) {
                 const eventType = eventTypes[j];
-                const listens = geos[i].listens(eventType);
+                const listens = geometry.listens(eventType);
                 if (listens > 0) {
                     return true;
                 }

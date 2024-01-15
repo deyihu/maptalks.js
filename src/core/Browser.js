@@ -2,7 +2,7 @@ import { isFunction } from './util/common';
 import { IS_NODE } from './util/env';
 
 let Browser = {};
-const maps = {};
+// const maps = {};
 
 function getDevicePixelRatio() {
     return (window.devicePixelRatio || (window.screen.deviceXDPI / window.screen.logicalXDPI));
@@ -35,7 +35,8 @@ if (!IS_NODE) {
         imageBitMap = typeof window !== 'undefined' && isFunction(window.createImageBitmap),
         resizeObserver = typeof window !== 'undefined' && isFunction(window.ResizeObserver),
         btoa = typeof window !== 'undefined' && isFunction(window.btoa),
-        proxy = typeof window !== 'undefined' && isFunction(window.Proxy);
+        proxy = typeof window !== 'undefined' && isFunction(window.Proxy),
+        requestIdleCallback = typeof window !== 'undefined' && isFunction(window.requestIdleCallback);
 
 
     let chromeVersion = 0;
@@ -82,6 +83,7 @@ if (!IS_NODE) {
     }
 
     Browser = {
+        isTest: false,
         ie: ie,
         ielt9: ie && !document.addEventListener,
         edge: 'msLaunchUri' in navigator && !('documentMode' in document),
@@ -126,11 +128,12 @@ if (!IS_NODE) {
         monitorDPRChange: true,
         supportsPassive,
         proxy,
-        removeDPRListening: (map) => {
-            if (map) {
-                delete maps[map.id];
-            }
-        },
+        requestIdleCallback,
+        // removeDPRListening: (map) => {
+        //     // if (map) {
+        //     //     delete maps[map.id];
+        //     // }
+        // },
         checkDevicePixelRatio: () => {
             if (typeof window !== 'undefined' && Browser.monitorDPRChange) {
                 const devicePixelRatio = getDevicePixelRatio();
@@ -142,55 +145,11 @@ if (!IS_NODE) {
             }
             return false;
         },
-        addDPRListening: (map) => {
-            if (map) {
-                maps[map.id] = map;
-            }
-        }
+        // addDPRListening: (map) => {
+        //     // if (map) {
+        //     //     maps[map.id] = map;
+        //     // }
+        // }
     };
-    //monitor devicePixelRatio change
-    if (typeof window !== 'undefined' && window.matchMedia) {
-        for (let i = 1; i < 500; i++) {
-            const dpi = (i * 0.01).toFixed(2);
-            const screen = window.matchMedia(`screen and (resolution: ${dpi}dppx)`);
-            if (screen) {
-                if (screen.addEventListener) {
-                    screen.addEventListener('change', Browser.checkDevicePixelRatio);
-                } else if (screen.addListener) {
-                    screen.addListener(Browser.checkDevicePixelRatio);
-                }
-            }
-        }
-
-    }
-
-    if (Browser.devicePixelRatio) {
-        let tempDPI = Browser.devicePixelRatio;
-        Object.defineProperty(Browser, 'devicePixelRatio', {
-            get: () => {
-                return tempDPI;
-            },
-            set: (value) => {
-                if (value === tempDPI) {
-                    return;
-                }
-                //when devicePixelRatio change force resize all layers
-                tempDPI = value;
-                if (!Browser.monitorDPRChange) {
-                    return;
-                }
-                for (const mapId in maps) {
-                    const map = maps[mapId];
-                    if (!map || !map.options || map.options['devicePixelRatio'] || !map.checkSize || !map.getRenderer) {
-                        continue;
-                    }
-                    const renderer = map.getRenderer();
-                    if (renderer) {
-                        map.checkSize(true);
-                    }
-                }
-            }
-        });
-    }
 }
 export default Browser;

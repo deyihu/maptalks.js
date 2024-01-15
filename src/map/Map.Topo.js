@@ -102,9 +102,15 @@ Map.include(/** @lends Map.prototype */ {
         const coordinate = this.containerPointToCoord(containerPoint);
         return this._identify(opts, callback, layer => {
             let result;
+            const containerPoint = opts.containerPoint;
             if (isMapGeometryEvent && !isNil(layer.options.geometryEventTolerance)) {
                 opts.tolerance = opts.tolerance || 0;
                 opts.tolerance += layer.options.geometryEventTolerance;
+            }
+            if (layer._hasGeoListeners && isMapGeometryEvent && opts.eventTypes.indexOf('mousemove') >= 0) {
+                if (!layer._hasGeoListeners(opts.eventTypes)) {
+                    return [];
+                }
             }
             if (layer.identifyAtPoint) {
                 result = layer.identifyAtPoint(containerPoint, opts);
@@ -113,6 +119,7 @@ Map.include(/** @lends Map.prototype */ {
             } else {
                 result = [];
             }
+
             if (isMapGeometryEvent) {
                 if (isNil(tolerance)) {
                     delete opts.tolerance;

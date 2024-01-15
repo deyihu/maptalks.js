@@ -1,9 +1,10 @@
-import { requestAnimFrame } from '../util';
+// import { requestAnimFrame } from '../util';
 import { setWorkerPool, setWorkersCreated } from './CoreWorkers';
 import { getWorkerSourcePath } from './Worker';
+import GlobalConfig from '../../GlobalConfig';
 
 const hardwareConcurrency = typeof window !== 'undefined' ? (window.navigator.hardwareConcurrency || 4) : 0;
-const workerCount = Math.max(Math.floor(hardwareConcurrency / 2), 1);
+const hardwareWorkerCount = Math.max(Math.floor(hardwareConcurrency / 2), 1);
 
 class MessageBatch {
     constructor(limit = 50) {
@@ -42,7 +43,7 @@ class MessageBatch {
 export default class WorkerPool {
     constructor() {
         this.active = {};
-        this.workerCount = typeof window !== 'undefined' ? (window.MAPTALKS_WORKER_COUNT || workerCount) : 0;
+        this.workerCount = typeof window !== 'undefined' ? (GlobalConfig.workerCount || hardwareWorkerCount) : 0;
         this._messages = [];
         this._messageBuffers = [];
     }
@@ -101,6 +102,19 @@ export default class WorkerPool {
             }
         }
     }
+
+    getWorkers() {
+        return this.workers || [];
+    }
+
+    broadcastIdleMessage() {
+        const workers = this.getWorkers();
+        workers.forEach(worker => {
+            worker.postMessage({ messageType: 'idle', messageCount: GlobalConfig.taskCountPerWorkerMessage });
+        });
+        return this;
+    }
+
 }
 
 let globalWorkerPool;
@@ -112,10 +126,10 @@ export function getGlobalWorkerPool() {
     return globalWorkerPool;
 }
 
-function frameLoop() {
-    getGlobalWorkerPool().commit();
-    requestAnimFrame(frameLoop);
-}
-if (requestAnimFrame) {
-    requestAnimFrame(frameLoop);
-}
+// function frameLoop() {
+//     getGlobalWorkerPool().commit();
+//     requestAnimFrame(frameLoop);
+// }
+// if (requestAnimFrame) {
+//     requestAnimFrame(frameLoop);
+// }
