@@ -12,7 +12,10 @@ import * as styleUtil from './core/util/style';
 import * as stringsUtil from './core/util/strings';
 import * as mat4Util from './core/util/mat4';
 
-const Util = Object.assign({}, commonUtil, envUtil, utilUtil, {});
+const Util1 = Object.assign({}, commonUtil, envUtil, utilUtil);
+const Util2 = Object.assign({}, resourceUtil, styleUtil, stringsUtil);
+const Util3 = Object.assign({}, mat4Util);
+const Util = Object.assign({}, Util1, Util2, Util3);
 
 import * as DomUtil from './core/util/dom';
 import * as StringUtil from './core/util/strings';
