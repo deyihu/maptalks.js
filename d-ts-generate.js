@@ -26,5 +26,9 @@ function readDTS(p) {
     }
 }
 readDTS(root);
-fs.writeFileSync(path.join(__dirname, './dist/maptalks.dts.json'), JSON.stringify(result));
-fs.writeFileSync(path.join(__dirname, './../builder-docs/src/public/lib/maptalks.dts.json'), JSON.stringify(result));
+fs.writeFileSync(path.join(__dirname, './dist/maptalks.d.ts.json'), JSON.stringify(result));
+try {
+    fs.writeFileSync(path.join(__dirname, './../builder-docs/src/public/lib/maptalks.d.ts.json'), JSON.stringify(result));
+} catch (error) {
+
+}

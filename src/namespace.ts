@@ -12,10 +12,7 @@ import * as styleUtil from './core/util/style';
 import * as stringsUtil from './core/util/strings';
 import * as mat4Util from './core/util/mat4';
 
-const Util1 = Object.assign({}, commonUtil, envUtil, utilUtil);
-const Util2 = Object.assign({}, resourceUtil, styleUtil, stringsUtil);
-const Util3 = Object.assign({}, mat4Util);
-const Util = Object.assign({}, Util1, Util2, Util3);
+declare const Util: typeof commonUtil & typeof envUtil & typeof utilUtil & typeof resourceUtil & typeof styleUtil & typeof stringsUtil & typeof mat4Util;
 
 import * as DomUtil from './core/util/dom';
 import * as StringUtil from './core/util/strings';
@@ -47,6 +44,12 @@ export { default as Point } from './geo/Point';
 export { default as PointExtent } from './geo/PointExtent';
 export { default as Size } from './geo/Size';
 export { default as Transformation } from './geo/transformation/Transformation';
+//projection
+import * as projection from './geo/projection';
+import * as measurer from './geo/measurer';
+export {
+    projection, measurer
+}
 
 
 import { Map } from './map';
