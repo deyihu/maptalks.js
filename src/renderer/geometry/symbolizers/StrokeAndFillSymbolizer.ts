@@ -6,6 +6,7 @@ import PointExtent from '../../../geo/PointExtent';
 import { Geometry } from '../../../geometry';
 import Painter from '../Painter';
 import CanvasSymbolizer from './CanvasSymbolizer';
+import { ColorIn } from 'colorin';
 
 const TEMP_COORD0 = new Coordinate(0, 0);
 const TEMP_COORD1 = new Coordinate(0, 0);
@@ -17,6 +18,10 @@ export default class StrokeAndFillSymbolizer extends CanvasSymbolizer {
     _extMax: Coordinate;
     //@internal
     _pxExtent: PointExtent;
+    //@internal
+    _lineColorStopsKey?: string;
+    //@internal
+    _lineColorIn?: any;
     static test(symbol: any, geometry: Geometry): boolean {
         if (!symbol) {
             return false;
@@ -86,6 +91,9 @@ export default class StrokeAndFillSymbolizer extends CanvasSymbolizer {
                     params.push(...paintParams.slice(1));
                 }
                 params.push(style['lineOpacity'], style['polygonOpacity'], style['lineDasharray']);
+                if (isGradient) {
+                    params.push(this._lineColorIn);
+                }
                 // @ts-expect-error todo 属性“_paintOn”在类型“Geometry”上不存在
                 const bbox = this.geometry._paintOn(...params);
                 this._setBBOX(ctx, bbox);
@@ -99,6 +107,9 @@ export default class StrokeAndFillSymbolizer extends CanvasSymbolizer {
             const params = [ctx];
             params.push(...paintParams);
             params.push(style['lineOpacity'], style['polygonOpacity'], style['lineDasharray']);
+            if (isGradient) {
+                params.push(this._lineColorIn);
+            }
             // @ts-expect-error todo 属性“_paintOn”在类型“Geometry”上不存在
             const bbox = this.geometry._paintOn(...params);
             this._setBBOX(ctx, bbox);
@@ -186,19 +197,30 @@ export default class StrokeAndFillSymbolizer extends CanvasSymbolizer {
 
     //@internal
     _createGradient(ctx: CanvasRenderingContext2D, points: any[], lineColor: any): void {
-        if (!Array.isArray(points) || !points.length) {
+        const colorStops = lineColor.colorStops;
+        if (!Array.isArray(points) || !points.length || !colorStops || !Array.isArray(colorStops)) {
             return;
         }
-        const [p1, p2] = getGradientPoints(points);
-        if (!p1 || !p2) {
-            console.error('unable create canvas LinearGradient,error data:', points);
+        const key = JSON.stringify(colorStops);
+        if (key === this._lineColorStopsKey) {
             return;
         }
-        const grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-        lineColor['colorStops'].forEach(function (stop: [number, string]) {
-            grad.addColorStop(...stop);
-        });
-        ctx.strokeStyle = grad;
+        this._lineColorStopsKey = key;
+        const colors: Array<[value: number, color: string]> = colorStops.map(c => {
+            return [parseFloat(c[0]), c[1]];
+        })
+        this._lineColorIn = new ColorIn(colors, { height: 1, width: 100 });
+
+        // const [p1, p2] = getGradientPoints(points);
+        // if (!p1 || !p2) {
+        //     console.error('unable create canvas LinearGradient,error data:', points);
+        //     return;
+        // }
+        // const grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+        // lineColor['colorStops'].forEach(function (stop: [number, string]) {
+        //     grad.addColorStop(...stop);
+        // });
+        // ctx.strokeStyle = grad;
     }
 }
 

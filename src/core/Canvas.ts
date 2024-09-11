@@ -103,6 +103,45 @@ function getCubicControlPoints(x0, y0, x1, y1, x2, y2, x3, y3, smoothValue, t) {
     }
 }
 
+function pathDistance(points: Array<Point>) {
+    if (points.length < 2) {
+        return 0;
+    }
+    let distance = 0;
+    for (let i = 1, len = points.length; i < len; i++) {
+        const p1 = points[i - 1], p2 = points[i];
+        distance += p1.distanceTo(p2);
+    }
+    return distance;
+}
+
+function getColorInMinStep(colorIn: any) {
+    const colors = colorIn.colors || [];
+    const len = colors.length;
+    const steps = [];
+    for (let i = 0; i < len; i++) {
+        steps[i] = colors[i][0];
+    }
+    steps.sort((a, b) => {
+        return a - b;
+    });
+    let min = Infinity;
+    for (let i = 1; i < len; i++) {
+        const step1 = steps[i - 1], step2 = steps[i];
+        const stepOffset = step2 - step1;
+        min = Math.min(min, stepOffset);
+    }
+    return min;
+
+}
+
+function getSegmentPercentPoint(p1: Point, p2: Point, percent: number) {
+    const x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
+    const dx = x2 - x1, dy = y2 - y1;
+    return new Point(x1 + dx * percent, y1 + dy * percent);
+}
+
+
 const Canvas = {
     getCanvas2DContext(canvas: HTMLCanvasElement) {
         return canvas.getContext('2d', { willReadFrequently: true });
@@ -537,6 +576,86 @@ const Canvas = {
         }
     },
 
+    _gradientPath(ctx, points, lineDashArray, lineOpacity, isRing = false) {
+        console.log(points);
+        if (!isNumber(lineOpacity)) {
+            lineOpacity = 1;
+        }
+        const alpha = ctx.globalAlpha;
+        ctx.globalAlpha *= lineOpacity;
+        const colorIn = ctx.lineColorIn;
+        const minStep = getColorInMinStep(colorIn);
+        const distance = pathDistance(points);
+        let step = 0;
+        let preColor, color;
+        let preX, preY, currentX, currentY, nextPoint;
+
+        const [r, g, b, a] = colorIn.getColor(0);
+        preColor = `rgba(${r},${g},${b},${a})`;
+
+        const firstPoint = points[0];
+        preX = firstPoint.x;
+        preY = firstPoint.y;
+        if (isRing) {
+            const len = points.length;
+            const lastPoint = points[len - 1];
+            if (!firstPoint.equals(lastPoint)) {
+                points.push(firstPoint);
+            }
+        }
+
+        const drawSegment = () => {
+            if (nextPoint) {
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(preX, preY);
+                ctx.lineTo(currentX, currentY);
+                ctx.lineTo(nextPoint.x, nextPoint.y);
+                ctx.stroke();
+            }
+            const grad = ctx.createLinearGradient(preX, preY, currentX, currentY);
+            grad.addColorStop(0, preColor);
+            grad.addColorStop(1, color);
+            ctx.strokeStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(preX, preY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            preColor = color;
+            preX = currentX;
+            preY = currentY;
+        }
+
+        for (let i = 1, len = points.length; i < len; i++) {
+            const p1 = points[i - 1], p2 = points[i];
+            nextPoint = points[i + 1];
+            const x = p2.x, y = p2.y;
+            const dis = p1.distanceTo(p2);
+            const percent = dis / distance;
+
+            if (percent <= minStep) {
+                const [r, g, b, a] = colorIn.getColor(step + percent);
+                color = `rgba(${r},${g},${b},${a})`;
+                currentX = x;
+                currentY = y;
+                drawSegment();
+            } else {
+                const segments = Math.ceil(percent / minStep);
+                for (let n = 1; n <= segments; n++) {
+                    const tempStep = Math.min((n * minStep), percent);
+                    const [r, g, b, a] = colorIn.getColor(step + tempStep);
+                    color = `rgba(${r},${g},${b},${a})`;
+                    const point = getSegmentPercentPoint(p1, p2, tempStep / percent);
+                    currentX = point.x;
+                    currentY = point.y;
+                    drawSegment();
+                }
+            }
+            step += percent;
+        }
+        ctx.globalAlpha = alpha;
+    },
+
     //@internal
     _path(ctx, points, lineDashArray?, lineOpacity?, ignoreStrokePattern?) {
         if (!isArrayHasData(points)) {
@@ -588,7 +707,12 @@ const Canvas = {
         }
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
-        Canvas._path(ctx, points, lineDashArray, lineOpacity);
+        if (ctx.lineColorIn) {
+            this._gradientPath(ctx, points, lineDashArray, lineOpacity);
+
+        } else {
+            Canvas._path(ctx, points, lineDashArray, lineOpacity);
+        }
         Canvas._stroke(ctx, lineOpacity);
     },
 
@@ -654,6 +778,8 @@ const Canvas = {
             }
 
         }
+        const lineColorIn = ctx.lineColorIn;
+        const lineWidth = ctx.lineWidth;
         // function fillPolygon(points, i, op) {
         //     Canvas.fillCanvas(ctx, op, points[i][0].x, points[i][0].y);
         // }
@@ -664,6 +790,9 @@ const Canvas = {
             for (i = 0, len = points.length; i < len; i++) {
                 if (!isArrayHasData(points[i])) {
                     continue;
+                }
+                if (lineColorIn) {
+                    ctx.lineWidth = 0.1;
                 }
                 Canvas._ring(ctx, points[i], null, 0, true);
                 op = fillOpacity;
@@ -679,6 +808,10 @@ const Canvas = {
                     ctx.fillStyle = '#fff';
                 }
                 Canvas._stroke(ctx, 0);
+                ctx.lineWidth = lineWidth;
+                if (lineColorIn) {
+                    Canvas._gradientPath(ctx, points, null, 0, true);
+                }
             }
             ctx.restore();
         }
@@ -687,7 +820,9 @@ const Canvas = {
             if (!isArrayHasData(points[i])) {
                 continue;
             }
-
+            if (lineColorIn) {
+                ctx.lineWidth = 0.1;
+            }
             if (smoothness) {
                 Canvas.paintSmoothLine(ctx, points[i], lineOpacity, smoothness, true);
                 ctx.closePath();
@@ -711,6 +846,10 @@ const Canvas = {
                 }
             }
             Canvas._stroke(ctx, lineOpacity);
+            ctx.lineWidth = lineWidth;
+            if (lineColorIn) {
+                Canvas._gradientPath(ctx, points[i], lineDashArray, lineOpacity, true);
+            }
         }
         //还原fillStyle
         if (ctx.fillStyle !== fillStyle) {
@@ -1221,6 +1360,7 @@ function copyProperties(ctx: CanvasRenderingContext2D, savedCtx) {
     ctx.shadowOffsetX = savedCtx.shadowOffsetX;
     ctx.shadowOffsetY = savedCtx.shadowOffsetY;
     ctx.strokeStyle = savedCtx.strokeStyle;
+    ctx.lineColorIn = savedCtx.lineColorIn;
 }
 
 function setLineDash(ctx: CanvasRenderingContext2D, lineDashArray: number[]) {

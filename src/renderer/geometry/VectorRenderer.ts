@@ -291,7 +291,8 @@ const lineStringInclude = {
     },
 
     //@internal
-    _paintOn(ctx: CanvasRenderingContext2D, points: Point[], lineOpacity?: number, fillOpacity?: number, dasharray?: number[]) {
+    _paintOn(ctx: CanvasRenderingContext2D, points: Point[], lineOpacity?: number, fillOpacity?: number, dasharray?: number[], lineColorIn?: any) {
+        ctx.lineColorIn = lineColorIn;
         const r = isWithinPixel(this._painter);
         if (r.within) {
             Canvas.pixelRect(ctx, r.center, lineOpacity, fillOpacity);
@@ -478,7 +479,8 @@ const polygonInclude = {
     },
 
     //@internal
-    _paintOn(ctx: CanvasRenderingContext2D, points: Point[], lineOpacity?: number, fillOpacity?: number, dasharray?: number[]) {
+    _paintOn(ctx: CanvasRenderingContext2D, points: Point[], lineOpacity?: number, fillOpacity?: number, dasharray?: number[], lineColorIn?: any) {
+        ctx.lineColorIn = lineColorIn;
         const r = isWithinPixel(this._painter);
         if (r.within) {
             Canvas.pixelRect(ctx, r.center, lineOpacity, fillOpacity);
