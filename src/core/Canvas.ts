@@ -577,9 +577,11 @@ const Canvas = {
     },
 
     _gradientPath(ctx, points, lineDashArray, lineOpacity, isRing = false) {
-        console.log(points);
         if (!isNumber(lineOpacity)) {
             lineOpacity = 1;
+        }
+        if (lineOpacity === 0 || ctx.lineWidth === 0) {
+            return;
         }
         const alpha = ctx.globalAlpha;
         ctx.globalAlpha *= lineOpacity;
@@ -604,8 +606,10 @@ const Canvas = {
             }
         }
 
+        const dashArrayEnable = lineDashArray && Array.isArray(lineDashArray) && lineDashArray.length > 1;
+
         const drawSegment = () => {
-            if (nextPoint) {
+            if (!dashArrayEnable && nextPoint) {
                 ctx.strokeStyle = color;
                 ctx.beginPath();
                 ctx.moveTo(preX, preY);
@@ -627,10 +631,10 @@ const Canvas = {
         }
 
         for (let i = 1, len = points.length; i < len; i++) {
-            const p1 = points[i - 1], p2 = points[i];
+            const prePoint = points[i - 1], currentPoint = points[i];
             nextPoint = points[i + 1];
-            const x = p2.x, y = p2.y;
-            const dis = p1.distanceTo(p2);
+            const x = currentPoint.x, y = currentPoint.y;
+            const dis = currentPoint.distanceTo(prePoint);
             const percent = dis / distance;
 
             if (percent <= minStep) {
@@ -641,11 +645,12 @@ const Canvas = {
                 drawSegment();
             } else {
                 const segments = Math.ceil(percent / minStep);
+                nextPoint = currentPoint;
                 for (let n = 1; n <= segments; n++) {
                     const tempStep = Math.min((n * minStep), percent);
                     const [r, g, b, a] = colorIn.getColor(step + tempStep);
                     color = `rgba(${r},${g},${b},${a})`;
-                    const point = getSegmentPercentPoint(p1, p2, tempStep / percent);
+                    const point = getSegmentPercentPoint(prePoint, currentPoint, tempStep / percent);
                     currentX = point.x;
                     currentY = point.y;
                     drawSegment();
