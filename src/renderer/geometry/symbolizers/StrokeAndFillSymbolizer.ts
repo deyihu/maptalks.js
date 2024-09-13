@@ -201,6 +201,18 @@ export default class StrokeAndFillSymbolizer extends CanvasSymbolizer {
         if (!Array.isArray(points) || !points.length || !colorStops || !Array.isArray(colorStops)) {
             return;
         }
+
+        const [p1, p2] = getGradientPoints(points);
+        if (!p1 || !p2) {
+            console.error('unable create canvas LinearGradient,error data:', points);
+            return;
+        }
+        const grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+        lineColor['colorStops'].forEach(function (stop: [number, string]) {
+            grad.addColorStop(...stop);
+        });
+        ctx.strokeStyle = grad;
+
         const key = JSON.stringify(colorStops);
         if (key === this._lineColorStopsKey) {
             return;
@@ -210,17 +222,6 @@ export default class StrokeAndFillSymbolizer extends CanvasSymbolizer {
             return [parseFloat(c[0]), c[1]];
         })
         this._lineColorIn = new ColorIn(colors, { height: 1, width: 100 });
-
-        // const [p1, p2] = getGradientPoints(points);
-        // if (!p1 || !p2) {
-        //     console.error('unable create canvas LinearGradient,error data:', points);
-        //     return;
-        // }
-        // const grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-        // lineColor['colorStops'].forEach(function (stop: [number, string]) {
-        //     grad.addColorStop(...stop);
-        // });
-        // ctx.strokeStyle = grad;
     }
 }
 
