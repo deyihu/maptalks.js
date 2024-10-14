@@ -79,6 +79,9 @@ class MapCanvasRenderer extends MapRenderer {
     canvas: HTMLCanvasElement;
     topLayer: HTMLCanvasElement;
     topCtx: CanvasRenderingContext2D;
+    aboveCanvas: HTMLCanvasElement;
+    aboveCtx: CanvasRenderingContext2D;
+
 
     /**
      * @param map - map for the renderer
@@ -96,6 +99,26 @@ class MapCanvasRenderer extends MapRenderer {
 
     load() {
         this.initContainer();
+    }
+
+    checkAboveCanvas() {
+        if (this.aboveCanvas && this.canvas) {
+            const { aboveCanvas, canvas } = this;
+            if (aboveCanvas.width !== canvas.width) {
+                aboveCanvas.width = canvas.width;
+            }
+            if (aboveCanvas.height !== canvas.height) {
+                aboveCanvas.height = canvas.height;
+            }
+            if (aboveCanvas.style.width !== canvas.style.width) {
+                aboveCanvas.style.width = canvas.style.width;
+            }
+            if (aboveCanvas.style.height !== canvas.style.height) {
+                aboveCanvas.style.height = canvas.style.height;
+            }
+            this.aboveCtx = Canvas2D.getCanvas2DContext(this.aboveCanvas);
+            this.aboveCtx.fromMap = true;
+        }
     }
 
     /**
@@ -117,6 +140,8 @@ class MapCanvasRenderer extends MapRenderer {
         map._fireEvent('framestart');
         this.updateMapDOM();
         map.clearCollisionIndex();
+        this.checkAboveCanvas();
+        this.clearAboveCanvas();
         const layers = this._getAllLayerToRender();
         this.drawLayers(layers, framestamp);
         const updated = this.drawLayerCanvas(layers);
@@ -213,10 +238,21 @@ class MapCanvasRenderer extends MapRenderer {
             layerLimit = this.map.options['layerCanvasLimitOnInteracting'],
             l = layers.length;
         const baseLayer = map.getBaseLayer();
+        const zoom = map.getZoom();
         let t = 0;
         for (let i = 0; i < l; i++) {
             const layer = layers[i];
-            if (!layer.isVisible()) {
+            const renderer = layer._getRenderer();
+            if (!renderer) {
+                continue;
+            }
+            if (renderer.checkReuse) {
+                renderer.checkReuse();
+            }
+        }
+        for (let i = 0; i < l; i++) {
+            const layer = layers[i];
+            if (!layer.isVisible(zoom)) {
                 continue;
             }
             const isCanvas = layer.isCanvasRender();
@@ -226,6 +262,22 @@ class MapCanvasRenderer extends MapRenderer {
             const renderer = layer._getRenderer();
             if (!renderer) {
                 continue;
+            }
+            if (renderer.canReUseMapCanvas && renderer.canReUseMapCanvas()) {
+                for (let j = i + 1; j < l; j++) {
+                    const nextLayer = layers[j];
+                    if (!nextLayer.isVisible(zoom)) {
+                        continue;
+                    }
+                    const nextRenderer = nextLayer._getRenderer();
+                    if (!nextRenderer) {
+                        continue;
+                    }
+                    if (nextRenderer.canReUseMapCanvas && !nextRenderer.canReUseMapCanvas()) {
+                        renderer.disableReuse();
+                        break;
+                    }
+                }
             }
             // if need to call layer's draw/drawInteracting
             const needsRedraw = needRedrawAllLayers || layer._toRedraw;
@@ -259,7 +311,9 @@ class MapCanvasRenderer extends MapRenderer {
                     continue;
                 }
                 t += this._drawCanvasLayerOnInteracting(layer, t, timeLimit, framestamp);
+
             } else if (isInteracting && renderer.drawOnInteracting) {
+
                 // dom layers
                 if (renderer.prepareRender) {
                     renderer.prepareRender();
@@ -486,6 +540,8 @@ class MapCanvasRenderer extends MapRenderer {
         const start = interacting && limit >= 0 && len > limit ? len - limit : 0;
         for (let i = start; i < len; i++) {
             this._drawLayerCanvasImage(images[i][0], images[i][1], targetWidth, targetHeight);
+            const renderer = images[i][0].getRenderer();
+            renderer.resetReuseState();
         }
 
         /**
@@ -773,6 +829,12 @@ class MapCanvasRenderer extends MapRenderer {
 
     //@internal
     _drawLayerCanvasImage(layer: Layer, layerImage: any, targetWidth?: number, targetHeight?: number) {
+        const renderer = layer.getRenderer();
+        if (renderer.canReUseMapCanvas()) {
+            // console.log('reusecanvas layer:', layer.getId());
+            return;
+        }
+        // console.log('render layer canvas:',layer.getId());
         const ctx = this.context;
         const point = layerImage['point'].round();
         const dpr = this.map.getDevicePixelRatio();
@@ -810,7 +872,7 @@ class MapCanvasRenderer extends MapRenderer {
         if (layer.options['cssFilter']) {
             ctx.filter = layer.options['cssFilter'];
         }
-        const renderer = layer.getRenderer();
+
         const matrix = renderer.__zoomTransformMatrix;
         const clipped = renderer.clipCanvas(this.context as any);
         if (matrix) {
@@ -848,12 +910,12 @@ class MapCanvasRenderer extends MapRenderer {
     _drawCenterCross() {
         const cross = this.map.options['centerCross'];
         if (cross) {
-            const ctx = this.context;
+            const ctx = this.aboveCtx;
             const p = new Point(this.canvas.width / 2, this.canvas.height / 2);
             if (isFunction(cross)) {
                 cross(ctx, p);
             } else {
-                Canvas2D.drawCross(this.context, p.x, p.y, 2, '#f00');
+                Canvas2D.drawCross(this.aboveCtx, p.x, p.y, 2, '#f00');
             }
         }
     }
@@ -931,6 +993,15 @@ class MapCanvasRenderer extends MapRenderer {
         return this.map._getLayers();
     }
 
+    clearAboveCanvas() {
+        if (!this.isLayerCanvasUpdated() && !this.isViewChanged() && this._needClear === false) {
+            return false;
+        }
+        if (this.aboveCtx) {
+            Canvas2D.clearRect(this.aboveCtx, 0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+
     clearCanvas() {
         if (!this.canvas) {
             return;
@@ -974,6 +1045,14 @@ class MapCanvasRenderer extends MapRenderer {
             this.canvas = createEl('canvas') as HTMLCanvasElement;
             this._updateCanvasSize();
             this.map.getPanels().canvasContainer.appendChild(this.canvas);
+            this.aboveCanvas = createEl('canvas') as HTMLCanvasElement;
+
+            this.map.getPanels().canvasContainer.appendChild(this.aboveCanvas);
+            [this.canvas, this.aboveCanvas].forEach(canvas => {
+                canvas.style.position = 'absolute';
+                canvas.style.zIndex = '0';
+                canvas.style.top = '0px';
+            })
         }
         this.context = this.canvas.getContext('2d');
     }

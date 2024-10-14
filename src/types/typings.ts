@@ -17,5 +17,7 @@ declare global {
         isClip: boolean;
         isMultiClip: boolean;
         dpr: number;
+        fromMap: boolean;
+        fromLayer: boolean;
     }
 }

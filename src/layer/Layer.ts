@@ -54,7 +54,8 @@ const options: LayerOptionsType = {
     'hitDetect': (function () {
         return !Browser.mobile;
     })(),
-    'maskClip': true
+    'maskClip': true,
+    'reuseCanvas': false
 };
 
 /**
@@ -491,19 +492,22 @@ class Layer extends JSONAble(Eventable(Renderable(Class))) {
      * Whether the layer is visible now.
      * @return
      */
-    isVisible(): boolean {
+    isVisible(zoom?: number): boolean {
         if (isNumber(this.options['opacity']) && this.options['opacity'] <= 0) {
             return false;
         }
-        const map = this.getMap();
-        if (map) {
-            const zoom = map.getZoom();
+        if (!isNumber(zoom)) {
+            const map = this.getMap();
+            if (map) {
+                zoom = map.getZoom();
+            }
+        }
+        if (!isNumber(zoom)) {
             if ((!isNil(this.options['maxZoom']) && this.options['maxZoom'] < zoom) ||
                 (!isNil(this.options['minZoom']) && this.options['minZoom'] > zoom)) {
                 return false;
             }
         }
-
         if (isNil(this.options['visible'])) {
             this.options['visible'] = true;
         }
@@ -905,6 +909,7 @@ export type LayerOptionsType = {
     geometryEvents?: boolean,
     geometryEventTolerance?: number,
     maskClip?: boolean;
+    reuseCanvas?: boolean;
 }
 
 export type LayerJSONType = {

@@ -193,7 +193,8 @@ class VectorLayerRenderer extends OverlayLayerCanvasRenderer {
         if (this.isProgressiveRender()) {
             return false;
         }
-        return !(this.context.canvas as any)._drawn;
+        
+        return false;
     }
 
     drawOnInteracting() {

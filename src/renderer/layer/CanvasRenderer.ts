@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { now, isNil, isArrayHasData, isSVG, IS_NODE, loadImage, hasOwn, getImageBitMap, calCanvasSize, isImageBitMap } from '../../core/util';
+import { now, isNil, isArrayHasData, isSVG, IS_NODE, loadImage, hasOwn, getImageBitMap, calCanvasSize, isImageBitMap, isNumber } from '../../core/util';
 import Class from '../../core/Class';
 import Browser from '../../core/Browser';
 import Canvas2D from '../../core/Canvas';
@@ -80,6 +80,9 @@ class CanvasRenderer extends Class {
     getImageData?(): ImageData;
     draw?(...args: any[]): void;
 
+    _reuseContext?: CanvasRenderingContext2D;
+    _reuseState?: boolean;
+
     /**
      * @param  {Layer} layer the layer to render
      */
@@ -94,6 +97,85 @@ class CanvasRenderer extends Class {
         this.setToRedraw();
     }
 
+    _canReUseMapCanvas() {
+        const layer = this.layer;
+        const options = layer.options;
+        if (!options.reuseCanvas) {
+            return false;
+        }
+        if (options.renderer === 'dom') {
+            return true;
+        }
+        if (this.gl) {
+            return false;
+        }
+        if (!this.context) {
+            return false;
+        }
+        if (!(this.context instanceof CanvasRenderingContext2D)) {
+            return false;
+        }
+
+        if (options.cssFilter || options.progressiveRender) {
+            return false;
+        }
+        if (layer.getMask && layer.getMask()) {
+            return false;
+        }
+        const opacity = layer.getOpacity();
+        if (isNumber(opacity) && opacity < 1) {
+            return false;
+        }
+
+        const map = this.getMap();
+        if (!map) {
+            return false
+        }
+        const mapRenderer = map.getRenderer();
+        if (!mapRenderer) {
+            return false
+        }
+        if (!mapRenderer.aboveCtx) {
+            return false
+        }
+        if (map.isInteracting() || mapRenderer.isSpatialReferenceChanged() || mapRenderer.isViewChanged()) {
+            return true
+        }
+
+        return false;
+    }
+
+    checkReuse() {
+        this._reuseState = this._canReUseMapCanvas();
+        if (this._reuseState) {
+            const map = this.getMap();
+            const mapRenderer = map.getRenderer();
+            this._reuseContext = mapRenderer.aboveCtx
+        } else {
+            this._reuseContext = null;
+        }
+        return this._reuseState;
+    }
+
+    disableReuse() {
+        this._reuseState = false;
+    }
+
+    canReUseMapCanvas() {
+        return this._reuseState;
+    }
+
+    getCurrentRenderContext() {
+        if (this._reuseContext && this._reuseState) {
+            return this._reuseContext;
+        }
+        return this.context;
+    }
+
+    resetReuseState() {
+        this._reuseState = false;
+        this._reuseContext = null;
+    }
 
     /**
      * Render the layer.
@@ -490,6 +572,7 @@ class CanvasRenderer extends Class {
             return;
         }
         this.context.dpr = 1;
+        this.context.fromLayer = true;
         if (this.layer.options['globalCompositeOperation']) {
             this.context.globalCompositeOperation = this.layer.options['globalCompositeOperation'];
         }
