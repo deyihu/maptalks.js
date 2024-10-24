@@ -7,13 +7,85 @@ import PointExtent from '../../geo/PointExtent';
 import Canvas from '../../core/Canvas';
 import * as Symbolizers from './symbolizers';
 import { interpolate } from '../../core/util/util';
-import { BBOX, getDefaultBBOX, resetBBOX, setBBOX, validateBBOX } from '../../core/util/bbox';
+import { BBOX, getDefaultBBOX, pointsBBOX, resetBBOX, setBBOX, validateBBOX } from '../../core/util/bbox';
 import Map from '../../map/Map'
 import { DebugSymbolizer } from './symbolizers';
 import Extent from '../../geo/Extent';
 import { ResourceCache } from '../layer/CanvasRenderer';
 import type { WithUndef } from '../../types/typings';
 import { Geometries } from '../../geometry'
+import { bboxInInQuadrilateral, clipLineByQuadrilatera } from '../../core/util/clip';
+
+function drawPaths(ctx: CanvasRenderingContext2D, pixels, pathPts) {
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'red';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'yellow';
+    for (let i = 0, len = pixels.length; i < len; i++) {
+        const { x, y } = pixels[i];
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+        if (i < len - 1) {
+            ctx.fillText((i + 1) + '', x, y);
+        }
+    }
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'green';
+    for (let i = 0, len = pathPts.length; i < len; i++) {
+        const { x, y } = pathPts[i];
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+        if (i < len - 1) {
+            ctx.fillText((i) + '', x, y);
+        }
+    }
+    ctx.stroke();
+}
+
+function debug(p1, p2, p3, p4, path) {
+    let canvas: HTMLCanvasElement = document.querySelector('#c');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'c';
+        const width = 400, height = 300;
+        canvas.width = width;
+        canvas.height = height;
+        Object.assign(canvas.style, { width: `${width}px`, height: `${height}px`, position: 'absolute', zIndex: 1, top: '0px', right: '0px', backgroundColor: '#000' });
+        document.body.appendChild(canvas);
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const points = [p1, p2, p3, p4, p1];
+    const bbox = getDefaultBBOX();
+    pointsBBOX(points.concat(path), bbox);
+    const [minx, miny, maxx, maxy] = bbox;
+    const dx = (maxx - minx), dy = maxy - miny;
+    const ax = dx / (canvas.width - 20), ay = dy / (canvas.height - 20);
+    const pixels = points.map(p => {
+        const x = (p.x - minx) / ax + 10;
+        const y = canvas.height - (p.y - miny) / ay - 5;
+        return new Point(x, y);
+    });
+
+    const pathPts = path.map(p => {
+        const x = (p.x - minx) / ax + 10;
+        const y = canvas.height - (p.y - miny) / ay - 5;
+        return new Point(x, y);
+    })
+    drawPaths(ctx, pixels, pathPts);
+
+
+}
 
 //registered symbolizers
 //the latter will paint at the last
@@ -485,12 +557,12 @@ class Painter extends Class {
         let _2DExtent, glExtent, pitch;
         if (mapStateCache) {
             //@internal
-        _2DExtent = mapStateCache._2DExtent;
+            _2DExtent = mapStateCache._2DExtent;
             glExtent = mapStateCache.glExtent;
             pitch = mapStateCache.pitch;
         } else {
             //@internal
-        _2DExtent = map.get2DExtent();
+            _2DExtent = map.get2DExtent();
             glExtent = map.get2DExtentAtRes(map.getGLRes());
             pitch = map.getPitch();
         }
@@ -504,7 +576,69 @@ class Painter extends Class {
         }
         const e = this.get2DExtent(null, TEMP_CLIP_EXTENT1);
         let clipPoints = points;
-        if (e.within(extent2D)) {
+        const pitched = map.getPitch() > 0;
+        const strictClipMode = geometry.options.strictClipMode;
+
+        const strictClipEnable = pitched && strictClipMode;
+        let lt: Point, rt: Point, br: Point, bl: Point;
+        if (pitched) {
+            const glRes = map.getGLRes();
+            let { xmin, ymin, xmax, ymax } = map.getContainerExtent();
+            const offset = -10;
+            xmin -= offset;
+            xmax += offset;
+            ymax += offset;
+            ymin -= offset;
+            const p = new Point(xmin, ymin);
+            //LT
+            lt = map['_containerPointToPointAtRes'](p, glRes);
+
+            p.x = xmax;
+            p.y = ymin;
+            //RT
+            rt = map['_containerPointToPointAtRes'](p, glRes);
+
+            p.x = xmax;
+            p.y = ymax;
+            //BR
+            br = map['_containerPointToPointAtRes'](p, glRes);
+
+            p.x = xmin;
+            p.y = ymax;
+            //BL
+            bl = map['_containerPointToPointAtRes'](p, glRes);
+            const points = [lt, rt, br, bl];
+            points.sort((a, b) => {
+                return b.y - a.y;
+            });
+            const [p1, p2, p3, p4] = points;
+            lt = p1;
+            rt = p2;
+            if (p1.x > p2.x) {
+                lt = p2;
+                rt = p1;
+            }
+            br = p3;
+            bl = p4;
+            if (p4.x > p3.x) {
+                br = p4;
+                bl = p3;
+            }
+
+
+        }
+        if (pitched) {
+            const bbox = getDefaultBBOX();
+            pointsBBOX(points, bbox);
+            // paths in current view
+            if (bboxInInQuadrilateral(bbox, lt, rt, br, bl)) {
+                return {
+                    points: clipPoints,
+                    altitude: altitude,
+                    inView: true
+                };
+            }
+        } else if (!pitched && e.within(extent2D)) {
             // if (this.geometry.getJSONType() === 'LineString') {
             //     // clip line with altitude
             //     return this._clipLineByAlt(clipPoints, altitude);
@@ -537,6 +671,7 @@ class Painter extends Class {
             // clip the polygon to draw less and improve performance
             if (!Array.isArray(points[0])) {
                 clipPoints = clipPolygon(points, TEMP_CLIP_EXTENT0);
+
             } else {
                 clipPoints = [];
                 for (let i = 0; i < points.length; i++) {
@@ -549,7 +684,13 @@ class Painter extends Class {
         } else if (geometry.getJSONType() === 'LineString' && !smoothness) {
             // clip the line string to draw less and improve performance
             if (!Array.isArray(points[0])) {
-                clipPoints = clipLine(points, TEMP_CLIP_EXTENT0, false, !!smoothness);
+                // clipPoints = clipLine(points, TEMP_CLIP_EXTENT0, false, !!smoothness);
+                if (!strictClipEnable) {
+                    clipPoints = clipLine(points, TEMP_CLIP_EXTENT0, false, !!smoothness);
+                } else {
+                    debug(lt, rt, br, bl, points);
+                    clipPoints = clipLineByQuadrilatera(points, lt, rt, br, bl);
+                }
             } else {
                 clipPoints = [];
                 for (let i = 0; i < points.length; i++) {
