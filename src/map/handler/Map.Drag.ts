@@ -290,7 +290,8 @@ Map.mergeOptions({
     'dragPan': true,
     'dragRotatePitch': true,
     'dragRotate': true,
-    'dragPitch': true
+    'dragPitch': true,
+    'query3DTilesOnDragging': false
 });
 
 Map.addOnLoadHook('addHandler', 'draggable', MapDragHandler);

@@ -1045,7 +1045,10 @@ Map.include(/** @lends Map.prototype */{
 
     //@internal
     queryPrjCoordAtContainerPoint(p) {
-        let queryCoord = this._query3DTilesInfo(p)
+        let queryCoord;
+        if (this.options['query3DTilesOnDragging']) {
+            queryCoord = this._query3DTilesInfo(p)
+        }
         if (!queryCoord) {
             queryCoord = this._queryTerrainInfo(p);
         }
