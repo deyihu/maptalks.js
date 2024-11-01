@@ -94,6 +94,7 @@ let TEMP_CANVAS = null;
 const RADIAN = Math.PI / 180;
 const textOffsetY = 1;
 const TEXT_BASELINE = 'top';
+const TEXT_BBOX_EXTENT = new Extent(0, 0, 0, 0);
 
 const textCharsCollisionIndex = new CollisionIndex();
 const textPathsCollisionIndex = new CollisionIndex();
@@ -830,6 +831,51 @@ const Canvas = {
             basePoint = point.add(0, ptAlign.y),
             maxHeight = style['textMaxHeight'];
         let text, rowAlign, height = 0;
+        //draw text bbox
+        const { textBackgroundColor, textBackgroundOpacity } = style;
+        if (textBackgroundColor && textBackgroundOpacity > 0) {
+            const textBBox = TEXT_BBOX_EXTENT;
+            textBBox.xmin = Infinity;
+            textBBox.ymin = Infinity;
+            textBBox.xmax = -Infinity;
+            textBBox.ymax = -Infinity;
+            for (let i = 0, len = texts.length; i < len; i++) {
+                text = texts[i];
+                rowAlign = getAlignPoint(texts[i]['size'], style['textHorizontalAlignment'], style['textVerticalAlignment']);
+                const point = basePoint.add(rowAlign.x, i * lineHeight);
+                const textSize = text.size;
+                const minx = point.x, miny = point.y, maxx = minx + textSize.width, maxy = miny + textSize.height;
+                textBBox.xmin = Math.min(textBBox.xmin, minx);
+                textBBox.ymin = Math.min(textBBox.ymin, miny);
+                textBBox.xmax = Math.max(textBBox.xmax, maxx);
+                textBBox.ymax = Math.max(textBBox.ymax, maxy);
+                if (maxHeight > 0) {
+                    height += lineHeight;
+                    if (height + textSize['height'] >= maxHeight) {
+                        break;
+                    }
+                }
+            }
+            const padding = style.textBackgroundPadding;
+            // if (isNumber(padding)) {
+            //     padding = [padding, padding];
+            // }
+            textBBox._expand(padding);
+            const x = textBBox.xmin, y = textBBox.ymin, w = textBBox.getWidth(), h = textBBox.getHeight();
+            const alpha = ctx.globalAlpha;
+            if (ctx.globalAlpha !== textBackgroundOpacity) {
+                ctx.globalAlpha = textBackgroundOpacity;
+            }
+            const fillStyle = ctx.fillStyle;
+            ctx.fillStyle = textBackgroundColor;
+            ctx.fillRect(x, y, w, h);
+            if (ctx.globalAlpha !== alpha) {
+                ctx.globalAlpha = alpha;
+            }
+            if (ctx.fillStyle !== fillStyle) {
+                ctx.fillStyle = fillStyle;
+            }
+        }
         resetBBOX(BBOX_TEMP);
         for (let i = 0, len = texts.length; i < len; i++) {
             text = texts[i]['text'];

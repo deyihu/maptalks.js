@@ -10,6 +10,7 @@ import CanvasLayer from './CanvasLayer';
 import ParticleLayer from './ParticleLayer';
 import TileSystem from './tile/tileinfo/TileSystem';
 import TileConfig from './tile/tileinfo/TileConfig';
+import LinkLineLayer from './LinkLineLayer';
 
 export {
     Layer,
@@ -23,5 +24,6 @@ export {
     CanvasLayer,
     ParticleLayer,
     TileSystem,
-    TileConfig
+    TileConfig,
+    LinkLineLayer
 };

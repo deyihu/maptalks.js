@@ -149,15 +149,15 @@ Map.include(/** @lends Map.prototype */{
         }
         const zoomOrigin = view['around'] || null;
         // let preView = this.getView();
-        const renderer = this._getRenderer(),
-            framer = function (fn) {
-                renderer.callInNextFrame(fn);
-            };
+        // const renderer = this._getRenderer(),
+        //     framer = function (fn) {
+        //         renderer.callInNextFrame(fn);
+        //     };
 
         const player = this._animPlayer = Animation.animate(props, {
             'easing': options['easing'] || 'out',
             'duration': options['duration'] || this.options['zoomAnimationDuration'],
-            'framer': framer,
+            // 'framer': framer,
             'repeat': options['repeat']
         }, frame => {
             if (this.isRemoved()) {
@@ -382,14 +382,14 @@ Map.include(/** @lends Map.prototype */{
         }
 
         // let preView = this.getView();
-        const renderer = this._getRenderer();
-        const framer = function (fn) {
-            renderer.callInNextFrame(fn);
-        };
+        // const renderer = this._getRenderer();
+        // const framer = function (fn) {
+        //     renderer.callInNextFrame(fn);
+        // };
         const player = this._animPlayer = Animation.animate({ k: [0, 1] }, {
             'easing': options['easing'] || 'out',
             'duration': options['duration'] || 8,
-            'framer': framer
+            // 'framer': framer
         }, frame => {
             if (this.isRemoved()) {
                 (player as any).finish();

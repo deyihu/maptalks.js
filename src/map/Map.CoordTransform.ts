@@ -364,7 +364,8 @@ Map.include(/** @lends Map.prototype */{
     }(),
 
     altitudeToPoint: function () {
-        const DEFAULT_CENTER = new Coordinate(0, 40);
+        // const DEFAULT_CENTER = new Coordinate(0, 40);
+        const DEFAULT_CENTER = new Coordinate(0, 0);
         const POINT = new Point(0, 0);
         return function (altitude = 0, res, originCenter) {
             if (this._altitudeOriginDirty) {
