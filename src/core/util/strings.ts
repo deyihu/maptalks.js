@@ -177,6 +177,10 @@ export function replaceVariable(str: string, props: Object) {
     if (!isString(str)) {
         return str;
     }
+    const [left, right] = TEMPLATE_CHARS;
+    if (str.indexOf(left) === -1 && str.indexOf(right) === -1) {
+        return str;
+    }
 
     function getValue(key) {
         if (!props) {
@@ -190,7 +194,6 @@ export function replaceVariable(str: string, props: Object) {
         }
         return value;
     }
-    const [left, right] = TEMPLATE_CHARS;
     const keys = templateKeys(str);
     for (let i = 0, len = keys.length; i < len; i++) {
         const key = keys[i];
