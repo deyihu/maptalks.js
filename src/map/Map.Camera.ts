@@ -52,8 +52,8 @@ declare module "./Map" {
         getContainerPointRay(from: Vector3, to: Vector3, containerPoint: Point, near?: number, far?: number);
         //@internal
         _query3DTilesInfo(containerPoint: Point);
-        //@internal
-        _queryTerrainInfo(containerPoint: Point);
+        // //@internal
+        // _queryTerrainInfo(containerPoint: Point);
         //@internal
         queryPrjCoordAtContainerPoint(containerPoint: Point);
     }
@@ -1045,7 +1045,8 @@ Map.include(/** @lends Map.prototype */{
 
     //@internal
     queryPrjCoordAtContainerPoint(p) {
-        let queryCoord = this._query3DTilesInfo(p)
+        // let queryCoord = this._query3DTilesInfo(p)
+        let queryCoord;
         if (!queryCoord) {
             queryCoord = this._queryTerrainInfo(p);
         }
