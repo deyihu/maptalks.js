@@ -542,7 +542,10 @@ Map.include(/** @lends Map.prototype */{
             pt.x = points[i].x;
             pt.y = points[i].y;
             pt._multi(scale);
-            const altitude = altitudeIsArray ? (altitudes[i] || 0) : altitudes;
+            let altitude = altitudeIsArray ? (altitudes[i] || 0) : altitudes;
+            if (Array.isArray(altitude)) {
+                altitude = altitude[0] || 0;
+            }
             this._toContainerPoint(pt, isTransforming, altitude, centerPoint);
         }
         return resultPoints;
@@ -643,8 +646,8 @@ Map.include(/** @lends Map.prototype */{
         const cp = [0, 0, 0],
             coord0 = [0, 0, 0, 1],
             coord1 = [0, 0, 0, 1];
-        return function (from: Vector3, to: Vector3, containerPoint: Point, near:number = 0, far:number = 1) {
-        const w2 = this.width / 2 || 1,
+        return function (from: Vector3, to: Vector3, containerPoint: Point, near: number = 0, far: number = 1) {
+            const w2 = this.width / 2 || 1,
                 h2 = this.height / 2 || 1;
             const p = containerPoint;
             set(cp as Vector3, (p.x - w2) / w2, (h2 - p.y) / h2, 0);
