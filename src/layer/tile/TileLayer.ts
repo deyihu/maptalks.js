@@ -308,7 +308,7 @@ class TileLayer extends Layer {
             const parentIds = tileGrid.tiles.map(tile => {
                 return tile.parent;
             });
-            tileGrid.parents = tileGrid.parents.filter(parent => {
+            tileGrid.parents = (tileGrid.parents || []).filter(parent => {
                 return parentIds.indexOf(parent.id) > -1;
             });
         });
