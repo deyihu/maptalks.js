@@ -1,7 +1,7 @@
-import * as maptalks from 'maptalks';
+import { MixinConstructor } from 'maptalks';
 import { createWebGLContext } from './util/gl-context';
 
-const canvasCompatible = function <T extends maptalks.MixinConstructor>(Base: T) {
+const canvasCompatible = function <T extends MixinConstructor>(Base: T) {
     const compatible = class extends Base {
         [x: string]: any;
         // create context in MapCanvasRenderer
