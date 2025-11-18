@@ -205,11 +205,11 @@ export default class Mesh {
     }
 
     get castShadow(): boolean {
-      return this._castShadow && (!this.material || !this.material.unlit);
+        return this._castShadow && (!this.material || !this.material.unlit);
     }
 
     set castShadow(v: boolean) {
-      this._castShadow = v;
+        this._castShadow = v;
     }
 
     setMaterial(material: Material) {
@@ -260,20 +260,20 @@ export default class Mesh {
     }
 
     hasFunctionUniform(k: string): boolean {
-      if (!this.uniforms) {
-        return false;
-      }
-      return Object.prototype.hasOwnProperty.call(this.uniforms, k);
+        if (!this.uniforms) {
+            return false;
+        }
+        return Object.prototype.hasOwnProperty.call(this.uniforms, k);
     }
 
     //@internal
     _updateUniformState(k: string) {
-      if (this.uniforms[k] === undefined) {
-        this._dirtyUniforms = true;
-      } else {
-        this._dirtyProps = this._dirtyProps || [];
-        this._dirtyProps.push(k);
-      }
+        if (this.uniforms[k] === undefined) {
+            this._dirtyUniforms = true;
+        } else {
+            this._dirtyProps = this._dirtyProps || [];
+            this._dirtyProps.push(k);
+        }
     }
 
     hasUniform(k: string): boolean {
@@ -336,7 +336,7 @@ export default class Mesh {
     getCommandKey(device: any): string {
         if (!this._commandKey || this.dirtyDefines || (this._material && this._materialKeys !== this._material.getUniformKeys())) {
             //TODO geometry的data变动也可能会改变commandKey，但鉴于geometry一般不会发生变化，暂时不管
-            let dKey = this.geometry.getCommandKey(device) + '_' +  this._getDefinesKey();
+            let dKey = this.geometry.getCommandKey(device) + '_' + this._getDefinesKey();
             const elementType = isNumber(this.getElements()) ? 'count' : 'elements';
             dKey += '_' + elementType;
             dKey += '_' + +(!!this.disableVAO);
@@ -383,7 +383,7 @@ export default class Mesh {
 
     appendGeoAttributes(props, device, activeAttributes) {
         extend(props, this._getGeometryAttributes(device, activeAttributes));
-        if (!isSupportVAO(device) || this.disableVAO) {
+        if (!(device.supportVAO || isSupportVAO(device)) || this.disableVAO) {
             props.elements = this._geometry.getElements();
         }
     }
@@ -445,17 +445,17 @@ export default class Mesh {
                 }
             }
             if (this._material && this._material.propVersion !== this._materialPropVer) {
-              const materialUniforms = this._material.getUniforms(device);
-              for (const p in materialUniforms) {
-                  if (hasOwn(materialUniforms, p) && !this._uniformDescriptors.has(p)) {
-                      const descriptor = Object.getOwnPropertyDescriptor(materialUniforms, p);
-                      if (!descriptor.get && this._realUniforms[p] !== materialUniforms[p]) {
-                        this._realUniforms[p] = materialUniforms[p];
-                      }
-                  }
-              }
+                const materialUniforms = this._material.getUniforms(device);
+                for (const p in materialUniforms) {
+                    if (hasOwn(materialUniforms, p) && !this._uniformDescriptors.has(p)) {
+                        const descriptor = Object.getOwnPropertyDescriptor(materialUniforms, p);
+                        if (!descriptor.get && this._realUniforms[p] !== materialUniforms[p]) {
+                            this._realUniforms[p] = materialUniforms[p];
+                        }
+                    }
+                }
 
-              this._materialPropVer = this._material.propVersion;
+                this._materialPropVer = this._material.propVersion;
             }
             this._dirtyProps = null;
         }

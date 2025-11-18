@@ -298,7 +298,7 @@ export default class Geometry {
     getREGLData(regl: any, activeAttributes: ActiveAttributes, disableVAO: boolean): AttributeData {
         this.getAttrData(activeAttributes);
         //support vao
-        if (isSupportVAO(regl) && !disableVAO) {
+        if ((regl.supportVAO || isSupportVAO(regl)) && !disableVAO) {
             const updated = !this._reglData || !this._reglData[activeAttributes.key];
             const key = activeAttributes && activeAttributes.key || 'default';
             if (!this._vao[key] || updated || this._vao[key].dirty) {
@@ -607,7 +607,7 @@ export default class Geometry {
     }
 
 
-    _updateGPUBuffer(buffer : GPUBuffer, data : AttributeData, offset: number, byteLength: number) {
+    _updateGPUBuffer(buffer: GPUBuffer, data: AttributeData, offset: number, byteLength: number) {
         if (Array.isArray(data)) {
             data = new Float32Array(data);
         }

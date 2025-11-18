@@ -59,7 +59,7 @@ export default class InstancedMesh extends Mesh {
     appendGeoAttributes(props, regl, activeAttributes) {
         // 只需要获得 geometry的 attr 数据，不需要elements
         const geoBuffers = this.geometry.getAttrData(activeAttributes);
-        if (isSupportVAO(regl)) {
+        if (regl.supportVAO || isSupportVAO(regl)) {
             const key = activeAttributes.key;
             if (!this._vao[key] || this._vao[key].dirty) {
                 const attributes = activeAttributes.map(attr => attr.name);
@@ -168,7 +168,7 @@ export default class InstancedMesh extends Mesh {
                 }
             } else if ((data[key] as REGL.Buffer).destroy) {
                 buffers[key] = {
-                    buffer : data[key] as REGL.Buffer,
+                    buffer: data[key] as REGL.Buffer,
                     divisor: 1
                 };
             } else {
@@ -188,7 +188,7 @@ export default class InstancedMesh extends Mesh {
 
     getRenderProps(regl: Regl) {
         const props = super.getRenderProps(regl);
-        if (!isSupportVAO(regl)) {
+        if (!(regl as any).supportVAO || isSupportVAO(regl)) {
             extend(props, this.instancedData);
         }
         props.elements = this.geometry.getElements();

@@ -15,8 +15,8 @@ import DynamicOffsets from '../webgpu/DynamicOffsets';
 
 
 const UNIFORM_TYPE = {
-    function : 'function',
-    array : 'array'
+    function: 'function',
+    array: 'array'
 };
 
 let uid = 0;
@@ -72,14 +72,14 @@ export class GLShader {
                 if (p.indexOf('[') > 0) {
                     // array
                     const { name, len } = parseArrayName(p);
-                    this.contextDesc[name] = { name, type : 'array', length : len };
+                    this.contextDesc[name] = { name, type: 'array', length: len };
                 } else {
                     this.contextDesc[p] = null;
                 }
             } else if (p.name.indexOf('[') > 0) {
                 // array function
                 const { name, len } = parseArrayName(p.name);
-                this.contextDesc[name] = { name, type : 'array', length : len, fn : p.fn };
+                this.contextDesc[name] = { name, type: 'array', length: len, fn: p.fn };
             } else {
                 // e.g.
                 // {
@@ -219,7 +219,7 @@ export class GLShader {
         const isInstanced = mesh instanceof InstancedMesh;
         const disableVAO = mesh.disableVAO;
 
-        const isVAO = isSupportVAO(regl) && !disableVAO;
+        const isVAO = (regl.supportVAO || isSupportVAO(regl)) && !disableVAO;
         const defines = extend({}, this.shaderDefines || {}, materialDefines || {});
         const vertSource = this._insertDefines(this.vert, defines);
         const vert = this.getVersion(regl, vertSource) + vertSource;
